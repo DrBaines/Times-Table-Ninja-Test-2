@@ -1,6 +1,6 @@
 /******** Google Sheet endpoint (multi-device) ********/
-const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec"; // Your Web App /exec URL
-const SHEET_SECRET   = "Banstead123";   // must match SECRET in your Apps Script
+const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
+const SHEET_SECRET   = "Banstead123";
 /******************************************************/
 
 /********* Offline/refresh-safe queue for submissions *********/
@@ -52,12 +52,12 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /******************** QUIZ STATE ********************/
-let selectedBase = null;   // 2..12
-let mode = 'baseline';     // 'baseline' | 'tester'
+let selectedBase = null;                  // 2..12
+let mode = 'baseline';                    // 'baseline' | 'tester'
 let allQuestions = [];
 let current = 0;
 let score = 0;
-let time = 90;             // set per mode on start
+let time = 90;                            // set per mode on start
 let timer = null;
 let timerStarted = false;
 let ended = false;
@@ -68,27 +68,69 @@ let username = "";
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 
 // Elements
-const qEl = document.getElementById("question");
-const aEl = document.getElementById("answer");
-const tEl = document.getElementById("timer");
-const sEl = document.getElementById("score");
-const padEl = document.getElementById("answer-pad"); // keypad container
+const qEl  = document.getElementById("question");
+const aEl  = document.getElementById("answer");
+const tEl  = document.getElementById("timer");
+const sEl  = document.getElementById("score");
+const padEl = document.getElementById("answer-pad");
+
+// Screens
+const homeScreen  = document.getElementById("home-screen");
+const miniScreen  = document.getElementById("mini-screen");
+const ninjaScreen = document.getElementById("ninja-screen");
+const quizScreen  = document.getElementById("quiz-container");
 
 /******************** DEVICE DETECTION ********************/
-// Detect iOS/iPadOS (including iPad that reports as "Mac")
 function isIOSLike() {
   const ua = navigator.userAgent || '';
   const iOS = /iPad|iPhone|iPod/.test(ua);
   const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
   return iOS || iPadAsMac;
 }
-
-// If answer is readOnly, block focus completely (prevents soft keyboard)
 function preventSoftKeyboard(e) {
   if (aEl && aEl.readOnly) {
     e.preventDefault();
     aEl.blur();
   }
+}
+
+/******************** NAVIGATION ********************/
+function show(el) { if (el) el.style.display = "block"; }
+function hide(el) { if (el) el.style.display = "none"; }
+
+function goHome() {
+  hide(miniScreen); hide(ninjaScreen); hide(quizScreen);
+  show(homeScreen);
+}
+
+function goMini() {
+  // Let pupils in even if the name is blank (no blocking here)
+  const name = document.getElementById('home-username')?.value.trim() || "";
+  if (name) username = name;
+
+  const hello = document.getElementById('hello-user');
+  if (hello) {
+    hello.textContent = username
+      ? `Hello, ${username}! Choose your times table:`
+      : `Choose your times table:`;
+  }
+
+  hide(homeScreen); hide(ninjaScreen); hide(quizScreen);
+  show(miniScreen);
+}
+
+function goNinja() {
+  const name = document.getElementById('home-username')?.value.trim() || "";
+  if (name) username = name;
+
+  hide(homeScreen); hide(miniScreen); hide(quizScreen);
+  show(ninjaScreen);
+}
+
+function quitToMini() {
+  if (timer) { clearInterval(timer); timer = null; }
+  hide(quizScreen);
+  show(miniScreen);
 }
 
 /******************** UI BUILDERS ********************/
@@ -116,7 +158,7 @@ function selectTable(base) {
   });
 }
 
-// Default highlight: set Baseline selected on load
+// Initialize mode highlights and build table buttons after DOM is ready
 (function initModeSelection(){
   const elB = document.getElementById('mode-baseline');
   const elT = document.getElementById('mode-tester');
@@ -124,19 +166,9 @@ function selectTable(base) {
     elB.classList.add('selected');
     elT.classList.remove('selected');
   }
-  // Build 2–12× buttons
-  buildTableButtons();
 })();
-
-function selectMode(m) {
-  mode = m;
-  const elB = document.getElementById('mode-baseline');
-  const elT = document.getElementById('mode-tester');
-  if (elB && elT) {
-    elB.classList.toggle('selected', mode === 'baseline');
-    elT.classList.toggle('selected', mode === 'tester');
-  }
-}
+document.addEventListener('DOMContentLoaded', buildTableButtons);
+if (document.getElementById('table-choices')) buildTableButtons();
 
 /******************** QUESTION BUILDER ********************/
 function buildQuestions(base) {
@@ -155,9 +187,14 @@ function buildQuestions(base) {
 
 /******************** QUIZ FLOW ********************/
 function startQuiz() {
-  username = document.getElementById("username").value.trim();
   if (!selectedBase) { alert("Please choose a times table (2×–12×)."); return; }
-  if (username === "") { alert("Please enter your name to begin."); return; }
+
+  // Require a name before starting the actual test
+  if (!username) {
+    const name = document.getElementById('home-username')?.value.trim() || "";
+    if (!name) { alert("Please enter your name on the home page first."); return; }
+    username = name;
+  }
 
   if (timer) { clearInterval(timer); timer = null; }
   time = (mode === 'tester') ? 30 : 90;
@@ -172,19 +209,16 @@ function startQuiz() {
 
   allQuestions = buildQuestions(selectedBase);
 
-  document.getElementById("login-container").style.display = "none";
-  document.getElementById("quiz-container").style.display = "block";
+  hide(homeScreen); hide(miniScreen); hide(ninjaScreen);
+  show(quizScreen);
 
-  // No "Good luck" — smaller style handled in CSS
   const modeLabel = (mode === 'tester') ? ' (Tester)' : '';
-  document.getElementById("welcome-user").textContent =
-    `Practising ${selectedBase}×${modeLabel}`;
+  document.getElementById("welcome-user").textContent = `Practising ${selectedBase}×${modeLabel}`;
 
-  // Prepare input visibility
   aEl.style.display = "inline-block";
   aEl.disabled = false;
 
-  // Toggle iPad keyboard behavior
+  // iPad keyboard suppression
   if (isIOSLike()) {
     aEl.readOnly = true;
     aEl.setAttribute('inputmode', 'none');
@@ -252,8 +286,7 @@ function startTimer() {
     time--;
     const min = Math.floor(time / 60);
     const sec = time % 60;
-    // Timer UI is hidden by CSS; logic still ends quiz
-    tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`;
+    tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`; // hidden by CSS
     if (time <= 0) {
       endQuiz();
     }
@@ -272,7 +305,7 @@ function endQuiz() {
   if (padEl) padEl.style.display = "none";
   tEl.style.display = "none";
 
-  // Restore normal behavior (tidy up listeners)
+  // Restore input behavior
   aEl.readOnly = false;
   aEl.setAttribute('inputmode', 'numeric');
   aEl.removeAttribute('tabindex');
@@ -326,7 +359,11 @@ function showAnswers() {
   sEl.innerHTML += html;
 }
 
-// Expose to HTML (onclick handlers for start/mode only)
+// Expose navigation + quiz functions to HTML
+window.goHome = goHome;
+window.goMini = goMini;
+window.goNinja = goNinja;
+window.quitToMini = quitToMini;
 window.selectTable = selectTable;
 window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
@@ -364,7 +401,7 @@ window.handleKey   = handleKey;
 
     btn.classList.add(posClassMap[label]); // place into grid area
 
-    // Use ONLY pointerdown to avoid double events
+    // Single-event path to avoid duplicate taps
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -398,7 +435,7 @@ window.handleKey   = handleKey;
     }
   }
 
-  // Keep hardware typing sane on laptops/desktops
+  // Restrict hardware typing to digits + controls
   aEl.addEventListener('keydown', (e) => {
     const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
     if (allowed.includes(e.key)) return;
