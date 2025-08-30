@@ -1,24 +1,51 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet
-   REMINDER:
-   If you make changes here, bump the version number in
-   index.html so browsers fetch the latest file:
-   
-   <link rel="stylesheet" href="./styles.css?v=frontpage-4" />
-   <script src="./script.js?v=frontpage-4"></script>
+   Times Tables Trainer - Stylesheet (refined Aug 2025)
+   REMINDER: bump the version numbers in index.html when you change files:
+   <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
+   <script src="./script.js?v=frontpage-8"></script>
    ========================================================= */
 
+/* ===== CSS Custom Properties (Theme) ===== */
+:root{
+  --bg: #eef;
+  --text: #111827;              /* slate-900 */
+  --muted: #374151;             /* gray-700 */
+  --primary: #1e3a8a;           /* blue-800 */
+  --primary-contrast: #ffffff;
+  --accent: #4caf50;            /* success */
+  --accent-contrast: #ffffff;
+  --warn: #ffb300;
+  --warn-contrast: #111827;
+  --blue: #007bff;              /* keypad digits */
+  --key-border: #1f2937;        /* gray-800 */
+  --focus: #7aa7ff;             /* focus ring */
+  --card: #ffffff;
+  --shadow: rgba(15, 23, 42, 0.12);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
+
 /* Base layout */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  background: #eef;
+  background: var(--bg);
+  color: var(--text);
 }
 .center { text-align: center; margin-top: 80px; }
 .title { font-size: 56px; margin: 0 0 20px; }
 .subtitle { font-size: 48px; margin: 0 0 20px; }
 .info-text { font-size: 22px; margin: 10px 0 20px; color: #444; }
 
+/* Utility for screen-reader-only text */
+.visually-hidden{ position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
+
+/* Buttons and inputs */
 .choice-buttons {
   display: flex;
   justify-content: center;
@@ -30,14 +57,17 @@ body {
   font-size: 42px;
   padding: 18px 36px;
   border: 3px solid #333;
-  background: white;
+  background: var(--card);
   border-radius: 12px;
   cursor: pointer;
+  box-shadow: 0 4px 10px var(--shadow);
 }
+.choice:hover { filter: brightness(0.98); }
+.choice:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
 .choice.selected {
-  background: #4caf50;
-  color: white;
-  border-color: #4caf50;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
 }
 
 .stack-mobile { gap: 20px; }
@@ -50,18 +80,25 @@ body {
   width: 520px;
   max-width: 92vw;
   text-align: center;
+  border-radius: 12px;
+  border: 2px solid #222;
+  background: var(--card);
+  box-shadow: 0 6px 14px var(--shadow);
 }
+.big-input:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
 
 .big-button {
   font-size: 28px;
   padding: 16px 26px;
   cursor: pointer;
   border: 2px solid #222;
-  border-radius: 10px;
-  background: #fff;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 6px 14px var(--shadow);
 }
-.big-button.primary { background: #4caf50; color: #fff; border-color: #4caf50; }
-.big-button.secondary { background: #ffb300; color: #222; border-color: #ffb300; }
+.big-button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.big-button.secondary { background: var(--warn); color: var(--warn-contrast); border-color: var(--warn); }
+.big-button:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
 
 /* Question & quiz info */
 .question { font-size: 120px; margin: 0 0 30px; }
@@ -70,7 +107,12 @@ body {
   width: 340px;
   text-align: center;
   margin-top: 0;
+  border-radius: 12px;
+  border: 3px solid #111;
+  background: var(--card);
+  box-shadow: 0 6px 14px var(--shadow);
 }
+.answer-input:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
 .timer { font-size: 50px; margin-top: 30px; }
 .score { font-size: 40px; margin-top: 30px; }
 
@@ -115,9 +157,9 @@ body {
 
 /* Base button look */
 .calc-pad button {
-  border: 2px solid #333;
-  border-radius: 8px;                /* squarer corners */
-  background: #fff;
+  border: 2px solid var(--key-border);
+  border-radius: 12px;                /* consistent rounded corners */
+  background: var(--card);
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
@@ -127,13 +169,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 10px var(--shadow);
 }
 
 /* Numbers: big, bold, bright blue */
 .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
   font-size: 34px;                   /* fits 70px keys */
-  font-weight: bold;
-  color: #007bff;
+  font-weight: 800;
+  color: var(--blue);
 }
 
 /* Special keys: smaller, dark grey text */
@@ -141,13 +184,14 @@ body {
 .calc-btn--clear,
 .calc-btn--back {
   font-size: 20px;
-  font-weight: normal;
+  font-weight: 600;
   color: #444;
 }
 
 /* Pressed + focus */
+.calc-pad button:hover { filter: brightness(0.98); }
 .calc-pad button:active { transform: scale(0.96); background: #f0f0f0; }
-.calc-pad button:focus  { outline: 3px solid #7aa7ff; outline-offset: 2px; }
+.calc-pad button:focus  { outline: 4px solid var(--focus); outline-offset: 3px; }
 
 /* Grid areas */
 .key-7     { grid-area: seven; }
@@ -187,6 +231,13 @@ body {
   .calc-btn--enter, .calc-btn--clear, .calc-btn--back { font-size: 18px; }
 }
 
-/* Smaller welcome line */
+/* Smaller welcome lines */
 #welcome-user { font-size: 28px; margin-bottom: 12px; font-weight: normal; color: #333; }
 #hello-user { font-size: 28px; font-weight: normal; color: #333; }
+
+/* Dark-mode (optional, minimal) */
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0b1023; --text:#e5e7eb; --card:#111827; --shadow:rgba(0,0,0,0.4); --key-border:#334155; }
+  .info-text{ color:#cbd5e1; }
+  .choice, .big-input, .big-button, .answer-input, .calc-pad button{ border-color:#334155; }
+}
