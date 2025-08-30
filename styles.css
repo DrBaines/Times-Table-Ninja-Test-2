@@ -50,3 +50,47 @@ body {
 .answer-input { font-size: 80px; width: 280px; text-align: center; }
 .timer { font-size: 50px; margin-top: 30px; }
 .score { font-size: 40px; margin-top: 30px; }
+
+/* === On-screen keypad === */
+.answer-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(64px, 1fr));
+  gap: 8px;
+  max-width: 360px;
+  margin: 12px auto 0; /* center under input */
+}
+
+.answer-pad button {
+  font-size: 32px;         /* big, tappable */
+  padding: 16px 0;
+  border: 2px solid #333;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.answer-pad button:active { transform: scale(0.98); }
+.answer-pad button:focus { outline: 4px solid #7aa7ff; outline-offset: 2px; }
+
+/* Make "Enter" span the full row */
+.answer-pad .span-3 { grid-column: 1 / -1; }
+
+/* Keep the existing input comfortable for kids (works for #answer too) */
+.answer-input, #answer {
+  font-size: 80px;   /* match your existing .answer-input size */
+  width: 280px;
+  text-align: center;
+}
+
+/* Slightly larger tap targets on small screens */
+@media (max-width: 480px) {
+  .answer-pad {
+    max-width: 92vw;
+    gap: 10px;
+  }
+  .answer-pad button {
+    font-size: 36px;
+    padding: 18px 0;
+  }
+}
