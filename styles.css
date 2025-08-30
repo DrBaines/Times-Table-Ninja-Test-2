@@ -78,41 +78,53 @@ body {
   text-align: right;
 }
 
-
 /* ===============================
-   Calculator-style keypad (lighter style)
+   Calculator-style keypad (lighter style, refined)
    =============================== */
 .answer-pad { margin: 0; }
 
-/* Calculator frame (no heavy background) */
 .calc-pad {
   display: grid;
   grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 10px;
-  max-width: 360px;
-  padding: 12px;
+  gap: 16px;                  /* increased spacing between buttons */
+  max-width: 380px;           /* slightly wider to suit spacing */
+  padding: 16px;              /* more breathing room */
   border-radius: 12px;
-  background: transparent;   /* same as page background */
+  background: transparent;    /* blend with page background */
   justify-self: start;
 }
 
-/* Buttons */
+/* Default button style */
 .calc-pad button {
-  font-size: 46px;               /* a bit larger */
-  font-weight: bold;             /* bolder numbers */
-  line-height: 1;
-  padding: 16px 0;
-  border: 2px solid #333;        /* outline buttons instead */
+  border: 2px solid #333;
   border-radius: 10px;
-  background: #fff;              /* white buttons */
-  color: #007bff;                /* bright blue for numbers */
-  box-shadow: none;              /* remove heavy shadow */
+  background: #fff;
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
   transition: transform 0.05s ease-in, background 0.1s;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* Number buttons */
+.calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
+  font-size: 42px;       /* larger numbers */
+  font-weight: bold;     /* bold numbers */
+  color: #007bff;        /* bright blue */
+  padding: 20px 0;       /* taller for presence */
+}
+
+/* Special keys (Enter, Clear, Backspace) */
+.calc-btn--enter,
+.calc-btn--clear,
+.calc-btn--back {
+  font-size: 24px;       /* smaller font */
+  font-weight: normal;   /* lighter than numbers */
+  color: #444;           /* dark grey text */
+  padding: 16px 0;
+  background: #fff;
+  border: 2px solid #333;
 }
 
 /* Pressed state */
@@ -127,39 +139,5 @@ body {
   outline-offset: 2px;
 }
 
-/* Full-row key */
+/* Full-row key (Enter spans across all columns) */
 .calc-pad .span-3 { grid-column: 1 / -1; }
-
-/* Special keys — darker text instead of white */
-.calc-btn--enter,
-.calc-btn--clear,
-.calc-btn--back {
-  background: #fff;        /* keep white like numbers */
-  color: #444;             /* dark grey text */
-  border: 2px solid #333;  /* keep outlined */
-  font-weight: normal;     /* slightly lighter than numbers */
-}
-
-/* Responsive */
-@media (max-width: 700px) {
-  .quiz-row {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-  .question-col {
-    align-items: center;
-    text-align: center;
-  }
-  .calc-pad {
-    justify-self: auto;
-    max-width: 94vw;
-    gap: 12px;
-    padding: 14px;
-  }
-  .calc-pad button {
-    font-size: 34px;
-    padding: 18px 0;
-  }
-}
