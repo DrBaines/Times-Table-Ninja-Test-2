@@ -4,19 +4,20 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   background: #eef;
 }
-.center { text-align: center; margin-top: 100px; }
+.center { text-align: center; margin-top: 80px; }
 .title { font-size: 56px; margin: 0 0 20px; }
 .subtitle { font-size: 48px; margin: 0 0 20px; }
+.info-text { font-size: 22px; margin: 10px 0 20px; color: #444; }
 
 .choice-buttons {
   display: flex;
   justify-content: center;
   gap: 16px;
-  margin: 10px 0 30px;
+  margin: 12px 0 30px;
   flex-wrap: wrap;
 }
 .choice {
-  font-size: 54px;
+  font-size: 42px;
   padding: 18px 36px;
   border: 3px solid #333;
   background: white;
@@ -29,6 +30,8 @@ body {
   border-color: #4caf50;
 }
 
+.stack-mobile { gap: 20px; }
+
 .name-row { margin: 10px 0 20px; }
 
 .big-input {
@@ -40,19 +43,23 @@ body {
 }
 
 .big-button {
-  font-size: 44px;
-  padding: 22px 54px;
+  font-size: 28px;
+  padding: 16px 26px;
   cursor: pointer;
-  margin-top: 10px;
+  border: 2px solid #222;
+  border-radius: 10px;
+  background: #fff;
 }
+.big-button.primary { background: #4caf50; color: #fff; border-color: #4caf50; }
+.big-button.secondary { background: #ffb300; color: #222; border-color: #ffb300; }
 
 /* Question & quiz info */
-.question { font-size: 100px; margin: 10px 0; } /* tighter spacing */
+.question { font-size: 120px; margin: 0 0 30px; }
 .answer-input {
-  font-size: 80px;
-  width: 280px;
+  font-size: 100px;
+  width: 340px;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 0;
 }
 .timer { font-size: 50px; margin-top: 30px; }
 .score { font-size: 40px; margin-top: 30px; }
@@ -60,54 +67,36 @@ body {
 /* Hide the timer UI but keep logic running */
 .timer { display: none !important; }
 
-/* ===============================
-   Question + Answer styling
-   =============================== */
+/* ===== Side-by-side layout (question | keypad) ===== */
 .quiz-row {
   display: inline-grid;
-  grid-template-columns: minmax(380px, auto) auto; /* question | keypad */
-  column-gap: 24px;                /* slightly more space between */
+  grid-template-columns: minmax(380px, auto) auto;
+  column-gap: 60px;                 /* wider gap from calculator */
   align-items: start;
   justify-content: center;
-  margin: 60px auto 0;             /* moved further down the page */
+  margin: 60px auto 0;
 }
 
 .question-col {
   display: flex;
   flex-direction: column;
-  align-items: center;              /* centre horizontally */
-  text-align: center;               /* centre question text */
+  align-items: center;               /* centre horizontally */
+  text-align: center;                /* centre question text */
 }
 
-/* Larger question text */
-.question {
-  font-size: 120px;                 /* scaled up */
-  margin: 0 0 30px;                 /* space below before answer box */
-}
-
-/* Larger answer input */
-.answer-input {
-  font-size: 100px;                 /* scaled up */
-  width: 340px;                     /* wider box */
-  text-align: center;
-  margin-top: 0;
-}
-
-/* ===============================
-   Numpad layout (smaller, wider spacing from questions)
-   =============================== */
+/* ===== Numpad layout (fixed-size grid, tall Enter, wide 0) ===== */
 .answer-pad { margin: 0; }
 
 .calc-pad {
   display: grid;
-  grid-template-columns: repeat(4, 70px);   /* smaller keys (was 90px) */
+  grid-template-columns: repeat(4, 70px);   /* smaller keys */
   grid-auto-rows: 70px;
   grid-template-areas:
     "seven eight nine back"
     "four  five  six  enter"
     "one   two   three enter"
     "zero  zero  clear enter";
-  gap: 14px;                                /* slightly smaller gaps between keys */
+  gap: 14px;
   width: max-content;
   padding: 8px 0;
   background: transparent;
@@ -117,7 +106,7 @@ body {
 /* Base button look */
 .calc-pad button {
   border: 2px solid #333;
-  border-radius: 8px;
+  border-radius: 8px;                /* squarer corners */
   background: #fff;
   cursor: pointer;
   user-select: none;
@@ -132,12 +121,12 @@ body {
 
 /* Numbers: big, bold, bright blue */
 .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-  font-size: 34px;   /* adjust font size to fit smaller keys */
+  font-size: 34px;                   /* fits 70px keys */
   font-weight: bold;
   color: #007bff;
 }
 
-/* Special keys */
+/* Special keys: smaller, dark grey text */
 .calc-btn--enter,
 .calc-btn--clear,
 .calc-btn--back {
@@ -165,12 +154,29 @@ body {
 .key-0     { grid-area: zero;  }
 .key-clear { grid-area: clear; }
 
-/* Wider gap between question column and keypad */
-.quiz-row {
-  display: inline-grid;
-  grid-template-columns: minmax(380px, auto) auto;
-  column-gap: 60px;     /* wider gap (was 24px) */
-  align-items: start;
-  justify-content: center;
-  margin: 60px auto 0;
+/* Smaller screens */
+@media (max-width: 700px) {
+  .quiz-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 40px;
+  }
+  .subtitle { font-size: 36px; }
+  .question { font-size: 80px; }
+  .answer-input { font-size: 72px; width: 280px; }
+  .calc-pad {
+    grid-template-columns: repeat(4, 56px);
+    grid-auto-rows: 56px;
+    gap: 10px;
+  }
+  .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
+    font-size: 28px;
+  }
+  .calc-btn--enter, .calc-btn--clear, .calc-btn--back { font-size: 18px; }
 }
+
+/* Smaller welcome line */
+#welcome-user { font-size: 28px; margin-bottom: 12px; font-weight: normal; color: #333; }
+#hello-user { font-size: 28px; font-weight: normal; color: #333; }
