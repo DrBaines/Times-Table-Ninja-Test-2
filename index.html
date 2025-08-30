@@ -4,78 +4,97 @@
   <meta charset="UTF-8" />
   <title>Times Table Trainer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="./favicon.ico">
+  <meta name="theme-color" content="#1e3a8a" />
+  <link rel="icon" href="./favicon.ico" />
 
   <!-- =========================================================
        REMINDER: If you update styles.css or script.js,
        bump the version numbers below so browsers fetch the latest.
        Example:
-       <link rel="stylesheet" href="./styles.css?v=frontpage-5" />
-       <script src="./script.js?v=frontpage-5"></script>
+       <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
+       <script src="./script.js?v=frontpage-8"></script>
 
-        Change just below and right at bottom of file
+       Change just below and right at bottom of file
        ========================================================= -->
-  
-  <link rel="stylesheet" href="./styles.css?v=frontpage-7" />
+
+  <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
 </head>
 <body>
+  <noscript>
+    <div style="padding:12px; background:#fee2e2; color:#7f1d1d; text-align:center; font-size:18px;">
+      This app needs JavaScript to run. Please enable JavaScript and reload.
+    </div>
+  </noscript>
 
   <!-- ===== HOME / FRONT PAGE ===== -->
-  <div id="home-screen" class="center">
+  <main id="home-screen" class="center" role="main">
     <h1 class="title">Times Table Trainer</h1>
 
     <div class="name-row">
-      <input type="text" id="home-username" placeholder="Enter your name" class="big-input" />
+      <label for="home-username" class="visually-hidden">Your name</label>
+      <input
+        type="text"
+        id="home-username"
+        placeholder="Enter your name"
+        class="big-input"
+        autocomplete="name"
+        aria-label="Enter your name"
+      />
     </div>
 
-    <div class="choice-buttons stack-mobile">
-      <button type="button" class="big-button primary" onclick="goMini()">Mini Tests (Single Tables)</button>
-      <button type="button" class="big-button secondary" onclick="goNinja()">Ninja Belt (Mixed Tables)</button>
+    <div class="choice-buttons stack-mobile" role="group" aria-label="Main choices">
+      <button type="button" class="big-button primary" onclick="goMini()" aria-label="Mini Tests single tables">
+        Mini Tests (Single Tables)
+      </button>
+      <button type="button" class="big-button secondary" onclick="goNinja()" aria-label="Ninja Belt mixed tables">
+        Ninja Belt (Mixed Tables)
+      </button>
     </div>
-  </div>
+  </main>
 
   <!-- ===== MINI TESTS SETUP (single tables) ===== -->
-  <div id="mini-screen" class="center" style="display:none;">
+  <section id="mini-screen" class="center" style="display:none;" aria-labelledby="mini-title">
     <h2 class="subtitle" id="hello-user"></h2>
 
-    <h2 class="subtitle" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
+    <h2 class="subtitle" id="mini-title" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
     <!-- JS will build 2×–12× buttons here -->
-    <div id="table-choices" class="choice-buttons"></div>
+    <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices"></div>
 
     <h2 class="subtitle" style="font-size:32px; margin-top:10px;">Mode</h2>
-    <div id="mode-choices" class="choice-buttons">
-      <button type="button" class="choice" id="mode-baseline" onclick="selectMode('baseline')">Baseline (30 Q / 90s)</button>
-      <button type="button" class="choice" id="mode-tester"   onclick="selectMode('tester')">Tester (12 Q / 30s)</button>
+    <div id="mode-choices" class="choice-buttons" role="group" aria-label="Mode choices">
+      <button type="button" class="choice" id="mode-baseline" onclick="selectMode('baseline')" aria-pressed="true">Baseline (30 Q / 90s)</button>
+      <button type="button" class="choice" id="mode-tester"   onclick="selectMode('tester')"   aria-pressed="false">Tester (12 Q / 30s)</button>
     </div>
 
     <div class="choice-buttons">
       <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz</button>
       <button class="big-button" onclick="goHome()">Back</button>
     </div>
-  </div>
+  </section>
 
   <!-- ===== NINJA BELT (coming soon) ===== -->
-  <div id="ninja-screen" class="center" style="display:none;">
-    <h2 class="subtitle">Ninja Belt (Mixed Tables)</h2>
+  <section id="ninja-screen" class="center" style="display:none;" aria-labelledby="ninja-title">
+    <h2 class="subtitle" id="ninja-title">Ninja Belt (Mixed Tables)</h2>
     <p class="info-text">Mixed-table practice is coming soon! For now, try a Mini Test.</p>
     <div class="choice-buttons">
       <button class="big-button" onclick="goHome()">Back</button>
     </div>
-  </div>
+  </section>
 
   <!-- ===== QUIZ UI ===== -->
-  <div id="quiz-container" class="center" style="display:none;">
+  <section id="quiz-container" class="center" style="display:none;" aria-labelledby="quiz-title">
     <h2 id="welcome-user" class="subtitle"></h2>
 
     <!-- Side-by-side layout: question+answer | keypad -->
     <div class="quiz-row">
       <div class="question-col">
-        <div id="question" class="question"></div>
+        <h2 id="quiz-title" class="visually-hidden">Times Table Question</h2>
+        <div id="question" class="question" role="status" aria-live="polite"></div>
+        <label for="answer" class="visually-hidden">Your answer</label>
         <input
           type="text"
           id="answer"
           class="answer-input"
-          onkeydown="handleKey(event)"
           inputmode="numeric"
           autocomplete="off"
           aria-label="Your answer"
@@ -88,15 +107,15 @@
       </div>
     </div>
 
-    <div id="timer" class="timer">Time left: 1:30</div>
-    <div id="score" class="score"></div>
+    <div id="timer" class="timer" aria-hidden="true">Time left: 1:30</div>
+    <div id="score" class="score" role="region" aria-label="Score and answers"></div>
 
     <div class="choice-buttons">
       <button class="big-button" onclick="quitToMini()">Quit</button>
     </div>
-  </div>
+  </section>
 
   <!-- Load script last so functions are available for onclick handlers -->
-  <script src="./script.js?v=frontpage-7"></script>
+  <script src="./script.js?v=frontpage-8" defer></script>
 </body>
 </html>
