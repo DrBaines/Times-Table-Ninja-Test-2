@@ -102,29 +102,50 @@ function preventSoftKeyboard(e) {
   }
 }
 
-/******************** NAVIGATION ********************/
+/******************** SMALL UI HELPERS ********************/
 function show(el){ if(el) el.style.display="block"; }
 function hide(el){ if(el) el.style.display="none"; }
 
-function goHome(){ hide(getMini()); hide(getNinja()); hide(getQuiz()); show(getHome()); }
+/* NEW: clear previous results/answers UI */
+function clearResultsUI() {
+  const s = getScoreEl();
+  if (s) s.innerHTML = "";
+}
+
+/******************** NAVIGATION ********************/
+function goHome(){
+  clearResultsUI();                // NEW
+  hide(getMini()); hide(getNinja()); hide(getQuiz());
+  show(getHome());
+}
 
 function goMini(){
   const name = $('home-username')?.value.trim() || "";
   if (name) username = name;
   const hello = $('hello-user');
   if (hello) hello.textContent = username ? `Hello, ${username}! Choose your times table:` : `Choose your times table:`;
-  hide(getHome()); hide(getNinja()); hide(getQuiz()); show(getMini());
+
+  clearResultsUI();                // NEW
+
+  hide(getHome()); hide(getNinja()); hide(getQuiz());
+  show(getMini());
 }
 
 function goNinja(){
   const name = $('home-username')?.value.trim() || "";
   if (name) username = name;
-  hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja());
+
+  clearResultsUI();                // NEW
+
+  hide(getHome()); hide(getMini()); hide(getQuiz());
+  show(getNinja());
 }
 
 function quitToMini(){
   if (timer) { clearInterval(timer); timer = null; }
-  hide(getQuiz()); show(getMini());
+  clearResultsUI();                // NEW
+  hide(getQuiz());
+  show(getMini());
 }
 
 /******************** UI BUILDERS ********************/
@@ -248,6 +269,8 @@ function buildQuestions(base){
 function startQuiz(){
   if (!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
 
+  clearResultsUI();                          // NEW: wipe any previous results
+
   if (!username){
     const name = $('home-username')?.value.trim() || "";
     if (!name){ alert("Please enter your name on the home page first."); return; }
@@ -286,8 +309,8 @@ function startQuiz(){
   // 🔧 Build keypad AFTER the quiz screen is visible — force fresh build
   const pad = getPadEl();
   if (pad) {
-    pad.innerHTML = '';            // NEW: clear any stale/empty buttons
-    pad.style.display = 'grid';    // NEW: ensure it's visible
+    pad.innerHTML = '';            // ensure no stale buttons remain
+    pad.style.display = 'grid';
   }
   buildKeypadIfNeeded();
 
