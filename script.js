@@ -52,7 +52,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /******************** QUIZ STATE ********************/
-let selectedBase = null;   // 2, 3, or 4
+let selectedBase = null;   // 2..12
 let mode = 'baseline';     // 'baseline' | 'tester'
 let allQuestions = [];
 let current = 0;
@@ -63,6 +63,9 @@ let timerStarted = false;
 let ended = false;
 let userAnswers = [];
 let username = "";
+
+// Offer these times tables:
+const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 
 // Elements
 const qEl = document.getElementById("question");
@@ -88,10 +91,26 @@ function preventSoftKeyboard(e) {
   }
 }
 
+/******************** UI BUILDERS ********************/
+function buildTableButtons() {
+  const container = document.getElementById('table-choices');
+  if (!container) return;
+  container.innerHTML = '';
+  TABLES.forEach(b => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'choice';
+    btn.id = `btn-${b}`;
+    btn.textContent = `${b}×`;
+    btn.addEventListener('click', () => selectTable(b));
+    container.appendChild(btn);
+  });
+}
+
 /******************** SELECTION ********************/
 function selectTable(base) {
   selectedBase = base;
-  [2,3,4].forEach(b => {
+  TABLES.forEach(b => {
     const el = document.getElementById(`btn-${b}`);
     if (el) el.classList.toggle("selected", b === base);
   });
@@ -105,6 +124,8 @@ function selectTable(base) {
     elB.classList.add('selected');
     elT.classList.remove('selected');
   }
+  // Build 2–12× buttons
+  buildTableButtons();
 })();
 
 function selectMode(m) {
@@ -135,7 +156,7 @@ function buildQuestions(base) {
 /******************** QUIZ FLOW ********************/
 function startQuiz() {
   username = document.getElementById("username").value.trim();
-  if (!selectedBase) { alert("Please choose 2×, 3× or 4×."); return; }
+  if (!selectedBase) { alert("Please choose a times table (2×–12×)."); return; }
   if (username === "") { alert("Please enter your name to begin."); return; }
 
   if (timer) { clearInterval(timer); timer = null; }
@@ -154,7 +175,7 @@ function startQuiz() {
   document.getElementById("login-container").style.display = "none";
   document.getElementById("quiz-container").style.display = "block";
 
-  // Updated: no "Good luck" — smaller text handled in CSS
+  // No "Good luck" — smaller style handled in CSS
   const modeLabel = (mode === 'tester') ? ' (Tester)' : '';
   document.getElementById("welcome-user").textContent =
     `Practising ${selectedBase}×${modeLabel}`;
@@ -231,7 +252,7 @@ function startTimer() {
     time--;
     const min = Math.floor(time / 60);
     const sec = time % 60;
-    // Timer UI is hidden in CSS; logic still updates and ends quiz
+    // Timer UI is hidden by CSS; logic still ends quiz
     tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`;
     if (time <= 0) {
       endQuiz();
@@ -249,7 +270,7 @@ function endQuiz() {
   qEl.textContent = "";
   aEl.style.display = "none";
   if (padEl) padEl.style.display = "none";
-  tEl.style.display = "none"; // CSS hides it anyway
+  tEl.style.display = "none";
 
   // Restore normal behavior (tidy up listeners)
   aEl.readOnly = false;
@@ -305,7 +326,7 @@ function showAnswers() {
   sEl.innerHTML += html;
 }
 
-// Expose to HTML (onclick handlers)
+// Expose to HTML (onclick handlers for start/mode only)
 window.selectTable = selectTable;
 window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
@@ -313,13 +334,17 @@ window.handleKey   = handleKey;
 
 /* ============================================================
    CALCULATOR KEYPAD — numpad layout (grid areas, single event)
+   Expects CSS with grid-template-areas:
+   "seven eight nine back"
+   "four  five  six  enter"
+   "one   two   three enter"
+   "zero  zero  clear enter"
    ============================================================ */
 (function () {
   if (!padEl || !aEl) return;
 
   const MAX_LEN = 4;
 
-  // Labels can be in any order; placement is controlled by area classes.
   const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
   const posClassMap = {
     '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back',
@@ -333,15 +358,13 @@ window.handleKey   = handleKey;
     btn.textContent = label;
     btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
 
-    // Appearance
     if (label === 'Enter') btn.classList.add('calc-btn--enter');
     if (label === 'Clear') btn.classList.add('calc-btn--clear');
     if (label === '⌫')     btn.classList.add('calc-btn--back');
 
-    // Position (must match CSS grid areas)
-    btn.classList.add(posClassMap[label]);
+    btn.classList.add(posClassMap[label]); // place into grid area
 
-    // Single event path to avoid double digits
+    // Use ONLY pointerdown to avoid double events
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
