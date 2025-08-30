@@ -7,7 +7,7 @@
   <link rel="icon" href="./favicon.ico">
 
   <!-- Cache-busted stylesheet -->
-  <link rel="stylesheet" href="./styles.css?v=2025-08-30-03" />
+  <link rel="stylesheet" href="./styles.css?v=2025-08-30-04" />
 </head>
 <body>
   <!-- Welcome / Login -->
@@ -44,16 +44,19 @@
       <div class="question-col">
         <div id="question" class="question"></div>
 
-        <!-- Answer input -->
+        <!-- Answer input:
+             Use type="text" (simpler cross-device).
+             JS will toggle readOnly/inputmode so iPad doesn't pop the keyboard,
+             while laptops can still type. -->
         <input
-  type="text"
-  id="answer"
-  class="answer-input"
-  onkeydown="handleKey(event)"
-  inputmode="none"
-  autocomplete="off"
-  aria-label="Your answer"
-/>
+          type="text"
+          id="answer"
+          class="answer-input"
+          onkeydown="handleKey(event)"
+          inputmode="numeric"
+          autocomplete="off"
+          aria-label="Your answer"
+        />
       </div>
 
       <!-- Calculator-style keypad -->
@@ -67,6 +70,6 @@
   </div>
 
   <!-- Cache-busted script (load last) -->
-  <script src="./script.js?v=2025-08-30-03"></script>
+  <script src="./script.js?v=2025-08-30-04"></script>
 </body>
 </html>
