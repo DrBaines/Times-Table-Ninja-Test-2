@@ -94,31 +94,32 @@ body {
 }
 
 /* ===============================
-   Numpad layout (uses grid areas)
+   Numpad layout (fixed-size grid)
    =============================== */
 .answer-pad { margin: 0; }
 
 .calc-pad {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  /* Named areas guarantee correct positions */
+  /* 4 equal columns; each cell 90x90 by default */
+  grid-template-columns: repeat(4, 90px);
+  grid-auto-rows: 90px;
+  /* Named areas guarantee positions */
   grid-template-areas:
     "seven eight nine back"
     "four  five  six  enter"
     "one   two   three enter"
     "zero  zero  clear enter";
   gap: 16px;
-  max-width: 560px;
-  padding: 16px;
-  border-radius: 12px;
+  width: max-content;     /* shrink-wrap to the grid */
+  padding: 8px 0;         /* light padding */
   background: transparent;
-  justify-self: start;
+  border-radius: 12px;
 }
 
 /* Base button look */
 .calc-pad button {
   border: 2px solid #333;
-  border-radius: 8px;
+  border-radius: 8px;      /* squarer corners */
   background: #fff;
   cursor: pointer;
   user-select: none;
@@ -127,15 +128,15 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 
-  /* Square by default; areas that span (0 and Enter) will override */
-  aspect-ratio: 1 / 1;
+  /* Fill the grid cell neatly */
   width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Numbers: big, bold, blue */
+/* Numbers: big, bold, bright blue */
 .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
   font-size: 42px;
   font-weight: bold;
@@ -155,7 +156,7 @@ body {
 .calc-pad button:active { transform: scale(0.96); background: #f0f0f0; }
 .calc-pad button:focus  { outline: 3px solid #7aa7ff; outline-offset: 2px; }
 
-/* Areas (names match JS below) */
+/* Place each key in its area */
 .key-7     { grid-area: seven; }
 .key-8     { grid-area: eight; }
 .key-9     { grid-area: nine;  }
@@ -163,9 +164,22 @@ body {
 .key-4     { grid-area: four;  }
 .key-5     { grid-area: five;  }
 .key-6     { grid-area: six;   }
-.key-enter { grid-area: enter; aspect-ratio: auto; height: auto; }       /* tall */
+.key-enter { grid-area: enter; }          /* spans rows 2–4 via grid-areas */
 .key-1     { grid-area: one;   }
 .key-2     { grid-area: two;   }
 .key-3     { grid-area: three; }
-.key-0     { grid-area: zero;  aspect-ratio: auto; height: 70px; }       /* wide 0 */
+.key-0     { grid-area: zero;  }          /* spans two columns via area */
 .key-clear { grid-area: clear; }
+
+/* Responsive: make cells smaller on narrow screens */
+@media (max-width: 600px) {
+  .calc-pad {
+    grid-template-columns: repeat(4, 70px);
+    grid-auto-rows: 70px;
+    gap: 12px;
+  }
+  .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
+    font-size: 34px;
+  }
+  .calc-btn--enter, .calc-btn--clear, .calc-btn--back { font-size: 20px; }
+}
