@@ -71,6 +71,23 @@ const tEl = document.getElementById("timer");
 const sEl = document.getElementById("score");
 const padEl = document.getElementById("answer-pad"); // keypad container
 
+/******************** DEVICE DETECTION ********************/
+// Detect iOS/iPadOS (including iPad that reports as "Mac")
+function isIOSLike() {
+  const ua = navigator.userAgent || '';
+  const iOS = /iPad|iPhone|iPod/.test(ua);
+  const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return iOS || iPadAsMac;
+}
+
+// If answer is readOnly, prevent focusing (stops iPad keyboard)
+function preventSoftKeyboard(e) {
+  if (aEl && aEl.readOnly) {
+    e.preventDefault();
+    aEl.blur();
+  }
+}
+
 /******************** SELECTION ********************/
 function selectTable(base) {
   selectedBase = base;
@@ -140,8 +157,24 @@ function startQuiz() {
   document.getElementById("welcome-user").textContent =
     `Good luck, ${username}! Practising ${selectedBase}×${modeLabel}`;
 
+  // Prepare input visibility
   aEl.style.display = "inline-block";
   aEl.disabled = false;
+
+  // Toggle iPad keyboard behavior:
+  // - On iOS-like devices: make answer readOnly and inputmode="none" so the soft keyboard won't appear.
+  // - On laptops/others: keep it editable and allow typing normally.
+  if (isIOSLike()) {
+    aEl.readOnly = true;
+    aEl.setAttribute('inputmode', 'none');
+    aEl.addEventListener('touchstart', preventSoftKeyboard, { passive: false });
+    aEl.addEventListener('focus', preventSoftKeyboard, true);
+  } else {
+    aEl.readOnly = false;
+    aEl.setAttribute('inputmode', 'numeric');
+    aEl.removeEventListener('touchstart', preventSoftKeyboard);
+    aEl.removeEventListener('focus', preventSoftKeyboard, true);
+  }
 
   showQuestion();
 }
@@ -152,8 +185,20 @@ function showQuestion() {
     aEl.value = "";
     aEl.disabled = false;
     aEl.style.display = "inline-block";
-    if (padEl) padEl.style.display = "grid"; // show keypad for each question
-    setTimeout(() => aEl.focus(), 0);
+
+    // Keep iPad keyboard off during quiz
+    if (isIOSLike()) {
+      aEl.readOnly = true;
+      aEl.setAttribute('inputmode', 'none');
+      // Don't focus the input on iPad — focusing can summon the keyboard on some versions
+    } else {
+      aEl.readOnly = false;
+      aEl.setAttribute('inputmode', 'numeric');
+      // Focusing is fine on laptops/desktops
+      setTimeout(() => aEl.focus(), 0);
+    }
+
+    if (padEl) padEl.style.display = "grid";
   } else {
     endQuiz();
   }
@@ -197,8 +242,14 @@ function endQuiz() {
 
   qEl.textContent = "";
   aEl.style.display = "none";
-  if (padEl) padEl.style.display = "none"; // hide keypad at end
+  if (padEl) padEl.style.display = "none";
   tEl.style.display = "none";
+
+  // Restore normal behavior (tidy up listeners)
+  aEl.readOnly = false;
+  aEl.setAttribute('inputmode', 'numeric');
+  aEl.removeEventListener('touchstart', preventSoftKeyboard);
+  aEl.removeEventListener('focus', preventSoftKeyboard, true);
 
   const asked = Math.min(current, allQuestions.length);
   const total = allQuestions.length;
@@ -291,15 +342,15 @@ window.handleKey   = handleKey;
       case 'Clear':
         aEl.value = '';
         aEl.dispatchEvent(new Event('input', { bubbles: true }));
-        aEl.focus();
+        // Keep focus rules as set in showQuestion()
         break;
       case '⌫':
         aEl.value = aEl.value.slice(0, -1);
         aEl.dispatchEvent(new Event('input', { bubbles: true }));
-        aEl.focus();
         break;
       case 'Enter':
         // Trigger your existing Enter logic
+        if (!timerStarted) { startTimer(); timerStarted = true; }
         window.handleKey({ key: 'Enter' });
         break;
       default:
@@ -307,12 +358,11 @@ window.handleKey   = handleKey;
           if (typeof MAX_LEN === 'number' && aEl.value.length >= MAX_LEN) return;
           aEl.value += label;
           aEl.dispatchEvent(new Event('input', { bubbles: true }));
-          aEl.focus();
         }
     }
   }
 
-  // Optional: restrict hardware keys to digits (but keep controls)
+  // Optional: restrict hardware keys to digits (keep controls)
   aEl.addEventListener('keydown', (e) => {
     const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
     if (allowed.includes(e.key)) return;
