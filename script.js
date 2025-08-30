@@ -246,7 +246,7 @@ function showAnswers() {
   sEl.innerHTML += html;
 }
 
-// Expose to HTML
+// Expose to HTML (onclick handlers)
 window.selectTable = selectTable;
 window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
@@ -276,11 +276,11 @@ window.handleKey   = handleKey;
     btn.type = 'button';
     btn.textContent = label;
     btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
+
     // Calculator styling classes
-    btn.classList.add('calc-btn');
-    if (label === 'Enter') { btn.classList.add('span-3', 'calc-btn--enter'); }
-    if (label === 'Clear') { btn.classList.add('calc-btn--clear'); }
-    if (label === '⌫')     { btn.classList.add('calc-btn--back'); }
+    if (label === 'Enter') btn.classList.add('span-3', 'calc-btn--enter');
+    if (label === 'Clear') btn.classList.add('calc-btn--clear');
+    if (label === '⌫')     btn.classList.add('calc-btn--back');
 
     btn.addEventListener('click', () => handlePress(label));
     padEl.appendChild(btn);
