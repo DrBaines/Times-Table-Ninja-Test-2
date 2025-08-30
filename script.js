@@ -312,34 +312,39 @@ window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
 
 /* ============================================================
-   CALCULATOR KEYPAD — single event path (no duplicates)
+   CALCULATOR KEYPAD — numpad layout (single-event, iPad-safe)
    ============================================================ */
 (function () {
   if (!padEl || !aEl) return;
 
   const MAX_LEN = 4;
-  const layout = [
-    '1','2','3',
-    '4','5','6',
-    '7','8','9',
-    '⌫','0','Clear',
-    'Enter'
-  ];
 
-  // Build buttons
-  layout.forEach((label) => {
+  // We’ll create the buttons and give them positioning classes.
+  const labels = ['7','8','9','⌫','4','5','6','Enter','1','2','3','0','Clear'];
+  const posClassMap = {
+    '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back',
+    '4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter',
+    '1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'
+  };
+
+  // Build buttons once
+  labels.forEach((label) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = label;
     btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
 
-    if (label === 'Enter') btn.classList.add('span-3', 'calc-btn--enter');
+    // Appearance classes
+    if (label === 'Enter') btn.classList.add('calc-btn--enter');
     if (label === 'Clear') btn.classList.add('calc-btn--clear');
     if (label === '⌫')     btn.classList.add('calc-btn--back');
 
-    // Use ONLY pointerdown to avoid duplicate events across devices
+    // Positioning class for the CSS grid
+    btn.classList.add(posClassMap[label]);
+
+    // Single event path to avoid double digits
     btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();      // stops focus + synthetic click
+      e.preventDefault();
       e.stopPropagation();
       if (isIOSLike()) aEl.blur();
       handlePress(label);
@@ -381,3 +386,4 @@ window.handleKey   = handleKey;
     }
   });
 })();
+
