@@ -2,38 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Times Table Quiz (2× / 3× / 4×)</title>
+  <title>Times Table Trainer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="./favicon.ico">
-  <link rel="stylesheet" href="./styles.css?v=2025-08-30-05" />
+  <link rel="stylesheet" href="./styles.css?v=2025-08-30-11" />
 </head>
 <body>
-  <!-- Welcome / Login -->
-  <div id="login-container" class="center">
-    <h1 class="title">Choose your times table</h1>
 
-    <!-- Table choices -->
+  <!-- ===== HOME / FRONT PAGE ===== -->
+  <div id="home-screen" class="center">
+    <h1 class="title">Times Table Trainer</h1>
+
+    <div class="name-row">
+      <input type="text" id="home-username" placeholder="Enter your name" class="big-input" />
+    </div>
+
+    <div class="choice-buttons stack-mobile">
+      <button type="button" class="big-button primary" onclick="goMini()">Mini Tests (Single Tables)</button>
+      <button type="button" class="big-button secondary" onclick="goNinja()">Ninja Belt (Mixed Tables)</button>
+    </div>
+  </div>
+
+  <!-- ===== MINI TESTS SETUP (single tables) ===== -->
+  <div id="mini-screen" class="center" style="display:none;">
+    <h2 class="subtitle" id="hello-user"></h2>
+
+    <h2 class="subtitle" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
+    <!-- JS will build 2×–12× buttons here -->
     <div id="table-choices" class="choice-buttons"></div>
 
-    <!-- Mode choices -->
     <h2 class="subtitle" style="font-size:32px; margin-top:10px;">Mode</h2>
     <div id="mode-choices" class="choice-buttons">
       <button type="button" class="choice" id="mode-baseline" onclick="selectMode('baseline')">Baseline (30 Q / 90s)</button>
       <button type="button" class="choice" id="mode-tester"   onclick="selectMode('tester')">Tester (12 Q / 30s)</button>
     </div>
 
-    <div class="name-row">
-      <input type="text" id="username" placeholder="Enter your name" class="big-input" />
+    <div class="choice-buttons">
+      <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz</button>
+      <button class="big-button" onclick="goHome()">Back</button>
     </div>
-
-    <button id="start-btn" onclick="startQuiz()" class="big-button">Start Quiz</button>
   </div>
 
-  <!-- Quiz UI -->
+  <!-- ===== NINJA BELT (coming soon) ===== -->
+  <div id="ninja-screen" class="center" style="display:none;">
+    <h2 class="subtitle">Ninja Belt (Mixed Tables)</h2>
+    <p class="info-text">Mixed-table practice is coming soon! For now, try a Mini Test.</p>
+    <div class="choice-buttons">
+      <button class="big-button" onclick="goHome()">Back</button>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ UI ===== -->
   <div id="quiz-container" class="center" style="display:none;">
     <h2 id="welcome-user" class="subtitle"></h2>
 
-    <!-- Side-by-side layout: question + input | keypad -->
+    <!-- Side-by-side layout: question+answer | keypad -->
     <div class="quiz-row">
       <div class="question-col">
         <div id="question" class="question"></div>
@@ -48,17 +71,21 @@
         />
       </div>
 
-      <!-- Calculator-style keypad -->
+      <!-- Numpad keypad -->
       <div id="answer-pad" class="answer-pad calc-pad" aria-label="On-screen number pad" role="group">
         <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
       </div>
     </div>
 
-    <!-- Timer stays in DOM but is hidden via CSS -->
+    <!-- Timer remains hidden via CSS but logic still runs -->
     <div id="timer" class="timer">Time left: 1:30</div>
     <div id="score" class="score"></div>
+
+    <div class="choice-buttons">
+      <button class="big-button" onclick="quitToMini()">Quit</button>
+    </div>
   </div>
 
-  <script src="./script.js?v=2025-08-30-05"></script>
+  <script src="./script.js?v=2025-08-30-11"></script>
 </body>
 </html>
