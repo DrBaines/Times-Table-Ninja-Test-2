@@ -67,7 +67,7 @@ let username = "";
 // Offer these times tables:
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 
-// Elements
+/******************** ELEMENTS ********************/
 const qEl  = document.getElementById("question");
 const aEl  = document.getElementById("answer");
 const tEl  = document.getElementById("timer");
@@ -149,6 +149,74 @@ function buildTableButtons() {
   });
 }
 
+/* Build the keypad only if it isn't present (robust across screen switches) */
+function buildKeypadIfNeeded() {
+  if (!padEl || !aEl) return;
+  if (padEl.childElementCount > 0) return; // already built
+
+  const MAX_LEN = 4;
+  const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
+  const posClassMap = {
+    '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back',
+    '4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter',
+    '1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'
+  };
+
+  labels.forEach((label) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
+
+    if (label === 'Enter') btn.classList.add('calc-btn--enter');
+    if (label === 'Clear') btn.classList.add('calc-btn--clear');
+    if (label === '⌫')     btn.classList.add('calc-btn--back');
+
+    btn.classList.add(posClassMap[label]); // grid area placement
+
+    // Single-event to avoid duplicate input on touch devices
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isIOSLike()) aEl.blur();
+      handlePadPress(label);
+    });
+
+    padEl.appendChild(btn);
+  });
+
+  function handlePadPress(label) {
+    switch (label) {
+      case 'Clear':
+        aEl.value = '';
+        aEl.dispatchEvent(new Event('input', { bubbles: true }));
+        break;
+      case '⌫':
+        aEl.value = aEl.value.slice(0, -1);
+        aEl.dispatchEvent(new Event('input', { bubbles: true }));
+        break;
+      case 'Enter':
+        if (!timerStarted) { startTimer(); timerStarted = true; }
+        window.handleKey({ key: 'Enter' });
+        break;
+      default:
+        if (/^\d$/.test(label)) {
+          if (aEl.value.length >= MAX_LEN) return;
+          aEl.value += label;
+          aEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+  }
+
+  // Restrict hardware typing (attach once)
+  aEl.addEventListener('keydown', (e) => {
+    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
+    if (allowed.includes(e.key)) return;
+    if (!/^\d$/.test(e.key)) e.preventDefault();
+    if (aEl.value.length >= MAX_LEN && /^\d$/.test(e.key)) e.preventDefault();
+  }, { once: true });
+}
+
 /******************** SELECTION ********************/
 function selectTable(base) {
   selectedBase = base;
@@ -158,7 +226,7 @@ function selectTable(base) {
   });
 }
 
-// Initialize mode highlights and build table buttons after DOM is ready
+/* Init: highlight Baseline, build table buttons after DOM ready */
 (function initModeSelection(){
   const elB = document.getElementById('mode-baseline');
   const elT = document.getElementById('mode-tester');
@@ -169,6 +237,7 @@ function selectTable(base) {
 })();
 document.addEventListener('DOMContentLoaded', buildTableButtons);
 if (document.getElementById('table-choices')) buildTableButtons();
+document.addEventListener('DOMContentLoaded', buildKeypadIfNeeded); // extra safety
 
 /******************** QUESTION BUILDER ********************/
 function buildQuestions(base) {
@@ -235,6 +304,10 @@ function startQuiz() {
     aEl.removeEventListener('mousedown', preventSoftKeyboard);
     aEl.removeEventListener('focus', preventSoftKeyboard, true);
   }
+
+  // Ensure keypad exists and is visible
+  buildKeypadIfNeeded();
+  if (padEl) padEl.style.display = "grid";
 
   showQuestion();
 }
@@ -359,7 +432,7 @@ function showAnswers() {
   sEl.innerHTML += html;
 }
 
-// Expose navigation + quiz functions to HTML
+/******************** EXPOSED FUNCTIONS ********************/
 window.goHome = goHome;
 window.goMini = goMini;
 window.goNinja = goNinja;
@@ -368,80 +441,3 @@ window.selectTable = selectTable;
 window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
-
-/* ============================================================
-   CALCULATOR KEYPAD — numpad layout (grid areas, single event)
-   Expects CSS with grid-template-areas:
-   "seven eight nine back"
-   "four  five  six  enter"
-   "one   two   three enter"
-   "zero  zero  clear enter"
-   ============================================================ */
-(function () {
-  if (!padEl || !aEl) return;
-
-  const MAX_LEN = 4;
-
-  const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
-  const posClassMap = {
-    '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back',
-    '4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter',
-    '1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'
-  };
-
-  labels.forEach((label) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = label;
-    btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
-
-    if (label === 'Enter') btn.classList.add('calc-btn--enter');
-    if (label === 'Clear') btn.classList.add('calc-btn--clear');
-    if (label === '⌫')     btn.classList.add('calc-btn--back');
-
-    btn.classList.add(posClassMap[label]); // place into grid area
-
-    // Single-event path to avoid duplicate taps
-    btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (isIOSLike()) aEl.blur();
-      handlePress(label);
-    });
-
-    padEl.appendChild(btn);
-  });
-
-  function handlePress(label) {
-    switch (label) {
-      case 'Clear':
-        aEl.value = '';
-        aEl.dispatchEvent(new Event('input', { bubbles: true }));
-        break;
-      case '⌫':
-        aEl.value = aEl.value.slice(0, -1);
-        aEl.dispatchEvent(new Event('input', { bubbles: true }));
-        break;
-      case 'Enter':
-        if (!timerStarted) { startTimer(); timerStarted = true; }
-        window.handleKey({ key: 'Enter' });
-        break;
-      default:
-        if (/^\d$/.test(label)) {
-          if (typeof MAX_LEN === 'number' && aEl.value.length >= MAX_LEN) return;
-          aEl.value += label;
-          aEl.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }
-  }
-
-  // Restrict hardware typing to digits + controls
-  aEl.addEventListener('keydown', (e) => {
-    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
-    if (allowed.includes(e.key)) return;
-    if (!/^\d$/.test(e.key)) e.preventDefault();
-    if (typeof MAX_LEN === 'number' && aEl.value.length >= MAX_LEN && /^\d$/.test(e.key)) {
-      e.preventDefault();
-    }
-  });
-})();
