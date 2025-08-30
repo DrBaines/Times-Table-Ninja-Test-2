@@ -306,8 +306,9 @@ window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
 
+
 /* ============================================================
-   CALCULATOR KEYPAD (iPad-safe)
+   CALCULATOR KEYPAD — single event path (no duplicates)
    ============================================================ */
 (function () {
   if (!padEl || !aEl) return;
@@ -321,6 +322,7 @@ window.handleKey   = handleKey;
     'Enter'
   ];
 
+  // Build buttons
   layout.forEach((label) => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -331,18 +333,12 @@ window.handleKey   = handleKey;
     if (label === 'Clear') btn.classList.add('calc-btn--clear');
     if (label === '⌫')     btn.classList.add('calc-btn--back');
 
+    // Use ONLY pointerdown to avoid duplicate events across devices
     btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+      e.preventDefault();      // stops focus + synthetic click
+      e.stopPropagation();
       if (isIOSLike()) aEl.blur();
       handlePress(label);
-    });
-    btn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      if (isIOSLike()) aEl.blur();
-      handlePress(label);
-    }, { passive: false });
-    btn.addEventListener('click', () => {
-      if (!isIOSLike()) handlePress(label);
     });
 
     padEl.appendChild(btn);
@@ -371,6 +367,7 @@ window.handleKey   = handleKey;
     }
   }
 
+  // Keep hardware typing sane
   aEl.addEventListener('keydown', (e) => {
     const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
     if (allowed.includes(e.key)) return;
