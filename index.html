@@ -5,7 +5,9 @@
   <title>Times Table Quiz (2× / 3× / 4×)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="./favicon.ico">
-  <link rel="stylesheet" href="./styles.css?v=2" />
+
+  <!-- Cache-busted stylesheet -->
+  <link rel="stylesheet" href="./styles.css?v=2025-08-30-03" />
 </head>
 <body>
   <!-- Welcome / Login -->
@@ -36,29 +38,36 @@
   <!-- Quiz UI -->
   <div id="quiz-container" class="center" style="display:none;">
     <h2 id="welcome-user" class="subtitle"></h2>
-    <div id="question" class="question"></div>
 
-    <!-- Answer input -->
-    <input
-      type="number"
-      id="answer"
-      class="answer-input"
-      onkeydown="handleKey(event)"
-      inputmode="numeric"
-      autocomplete="off"
-      aria-label="Your answer"
-      autofocus
-    />
+    <!-- Side-by-side layout: question + input | keypad -->
+    <div class="quiz-row">
+      <div class="question-col">
+        <div id="question" class="question"></div>
 
-    <!-- Calculator-style keypad -->
-    <div id="answer-pad" class="answer-pad calc-pad" aria-label="On-screen number pad" role="group">
-      <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
+        <!-- Answer input -->
+        <input
+          type="number"
+          id="answer"
+          class="answer-input"
+          onkeydown="handleKey(event)"
+          inputmode="numeric"
+          autocomplete="off"
+          aria-label="Your answer"
+          autofocus
+        />
+      </div>
+
+      <!-- Calculator-style keypad -->
+      <div id="answer-pad" class="answer-pad calc-pad" aria-label="On-screen number pad" role="group">
+        <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
+      </div>
     </div>
 
     <div id="timer" class="timer">Time left: 1:30</div>
     <div id="score" class="score"></div>
   </div>
 
-  <script src="./script.js?v=2"></script>
+  <!-- Cache-busted script (load last) -->
+  <script src="./script.js?v=2025-08-30-03"></script>
 </body>
 </html>
