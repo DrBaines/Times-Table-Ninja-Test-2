@@ -72,12 +72,15 @@ const sEl = document.getElementById("score");
 const padEl = document.getElementById("answer-pad"); // keypad container
 
 /******************** DEVICE DETECTION ********************/
+// Detect iOS/iPadOS (including iPad that reports as "Mac")
 function isIOSLike() {
   const ua = navigator.userAgent || '';
   const iOS = /iPad|iPhone|iPod/.test(ua);
   const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
   return iOS || iPadAsMac;
 }
+
+// If answer is readOnly, block focus completely (prevents soft keyboard)
 function preventSoftKeyboard(e) {
   if (aEl && aEl.readOnly) {
     e.preventDefault();
@@ -150,9 +153,11 @@ function startQuiz() {
 
   document.getElementById("login-container").style.display = "none";
   document.getElementById("quiz-container").style.display = "block";
+
+  // ✅ Updated: no "Good luck" — smaller text handled in CSS
   const modeLabel = (mode === 'tester') ? ' (Tester)' : '';
   document.getElementById("welcome-user").textContent =
-    `Good luck, ${username}! Practising ${selectedBase}×${modeLabel}`;
+    `Practising ${selectedBase}×${modeLabel}`;
 
   // Prepare input visibility
   aEl.style.display = "inline-block";
@@ -226,7 +231,7 @@ function startTimer() {
     time--;
     const min = Math.floor(time / 60);
     const sec = time % 60;
-    // This keeps running, but the .timer element is hidden by CSS
+    // Timer UI is hidden in CSS; logic still updates and ends quiz
     tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`;
     if (time <= 0) {
       endQuiz();
@@ -244,7 +249,7 @@ function endQuiz() {
   qEl.textContent = "";
   aEl.style.display = "none";
   if (padEl) padEl.style.display = "none";
-  tEl.style.display = "none"; // redundant (CSS hides it), but harmless
+  tEl.style.display = "none"; // CSS hides it anyway
 
   // Restore normal behavior (tidy up listeners)
   aEl.readOnly = false;
@@ -306,7 +311,6 @@ window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
 
-
 /* ============================================================
    CALCULATOR KEYPAD — single event path (no duplicates)
    ============================================================ */
@@ -367,7 +371,7 @@ window.handleKey   = handleKey;
     }
   }
 
-  // Keep hardware typing sane
+  // Keep hardware typing sane on laptops/desktops
   aEl.addEventListener('keydown', (e) => {
     const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
     if (allowed.includes(e.key)) return;
