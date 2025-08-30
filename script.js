@@ -1,8 +1,8 @@
 /* =========================================================
    Times Tables Trainer - Script
    REMINDER: bump versions in index.html when you change files:
-   <link rel="stylesheet" href="./styles.css?v=frontpage-6" />
-   <script src="./script.js?v=frontpage-6"></script>
+   <link rel="stylesheet" href="./styles.css?v=frontpage-7" />
+   <script src="./script.js?v=frontpage-7"></script>
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -283,9 +283,13 @@ function startQuiz(){
     }
   }
 
-  // 🔧 Build keypad AFTER the quiz screen is visible
+  // 🔧 Build keypad AFTER the quiz screen is visible — force fresh build
+  const pad = getPadEl();
+  if (pad) {
+    pad.innerHTML = '';            // NEW: clear any stale/empty buttons
+    pad.style.display = 'grid';    // NEW: ensure it's visible
+  }
   buildKeypadIfNeeded();
-  const pad = getPadEl(); if (pad) pad.style.display="grid";
 
   showQuestion();
 }
