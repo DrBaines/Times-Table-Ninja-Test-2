@@ -1,3 +1,13 @@
+/* =========================================================
+   Times Tables Trainer - Stylesheet
+   REMINDER:
+   If you make changes here, bump the version number in
+   index.html so browsers fetch the latest file:
+   
+   <link rel="stylesheet" href="./styles.css?v=frontpage-4" />
+   <script src="./script.js?v=frontpage-4"></script>
+   ========================================================= */
+
 /* Base layout */
 body {
   margin: 0;
