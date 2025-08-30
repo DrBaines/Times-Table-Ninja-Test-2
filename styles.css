@@ -60,22 +60,37 @@ body {
 /* Hide the timer UI but keep logic running */
 .timer { display: none !important; }
 
-/* ===== Side-by-side layout ===== */
+/* ===============================
+   Question + Answer styling
+   =============================== */
 .quiz-row {
   display: inline-grid;
-  grid-template-columns: minmax(320px, auto) auto; /* question | keypad */
-  column-gap: 56px;
-  row-gap: 0;
+  grid-template-columns: minmax(380px, auto) auto; /* question | keypad */
+  column-gap: 24px;                /* slightly more space between */
   align-items: start;
   justify-content: center;
-  margin: 10px auto 0;
+  margin: 60px auto 0;             /* moved further down the page */
 }
 
 .question-col {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;  /* lean toward keypad */
-  text-align: right;
+  align-items: center;              /* centre horizontally */
+  text-align: center;               /* centre question text */
+}
+
+/* Larger question text */
+.question {
+  font-size: 120px;                 /* scaled up */
+  margin: 0 0 30px;                 /* space below before answer box */
+}
+
+/* Larger answer input */
+.answer-input {
+  font-size: 100px;                 /* scaled up */
+  width: 340px;                     /* wider box */
+  text-align: center;
+  margin-top: 0;
 }
 
 /* ===============================
@@ -116,7 +131,7 @@ body {
 
 /* Number buttons */
 .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-  font-size: 42px;
+  font-size: 44px;       /* slightly larger */
   font-weight: bold;
   color: #007bff;
 }
@@ -125,7 +140,7 @@ body {
 .calc-btn--enter,
 .calc-btn--clear,
 .calc-btn--back {
-  font-size: 24px;
+  font-size: 22px;       /* slightly smaller */
   font-weight: normal;
   color: #444;
   background: #fff;
@@ -150,4 +165,5 @@ body {
   aspect-ratio: auto;       /* allow Enter to be wider */
   height: 70px;             /* fixed height for Enter */
 }
+
 
