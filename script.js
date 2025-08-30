@@ -72,15 +72,12 @@ const sEl = document.getElementById("score");
 const padEl = document.getElementById("answer-pad"); // keypad container
 
 /******************** DEVICE DETECTION ********************/
-// Detect iOS/iPadOS (including iPad that reports as "Mac")
 function isIOSLike() {
   const ua = navigator.userAgent || '';
   const iOS = /iPad|iPhone|iPod/.test(ua);
   const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
   return iOS || iPadAsMac;
 }
-
-// If answer is readOnly, prevent focusing (stops iPad keyboard)
 function preventSoftKeyboard(e) {
   if (aEl && aEl.readOnly) {
     e.preventDefault();
@@ -161,18 +158,21 @@ function startQuiz() {
   aEl.style.display = "inline-block";
   aEl.disabled = false;
 
-  // Toggle iPad keyboard behavior:
-  // - On iOS-like devices: make answer readOnly and inputmode="none" so the soft keyboard won't appear.
-  // - On laptops/others: keep it editable and allow typing normally.
+  // Toggle iPad keyboard behavior
   if (isIOSLike()) {
     aEl.readOnly = true;
     aEl.setAttribute('inputmode', 'none');
+    aEl.setAttribute('tabindex', '-1');
+    aEl.blur();
     aEl.addEventListener('touchstart', preventSoftKeyboard, { passive: false });
+    aEl.addEventListener('mousedown', preventSoftKeyboard, { passive: false });
     aEl.addEventListener('focus', preventSoftKeyboard, true);
   } else {
     aEl.readOnly = false;
     aEl.setAttribute('inputmode', 'numeric');
+    aEl.removeAttribute('tabindex');
     aEl.removeEventListener('touchstart', preventSoftKeyboard);
+    aEl.removeEventListener('mousedown', preventSoftKeyboard);
     aEl.removeEventListener('focus', preventSoftKeyboard, true);
   }
 
@@ -186,15 +186,15 @@ function showQuestion() {
     aEl.disabled = false;
     aEl.style.display = "inline-block";
 
-    // Keep iPad keyboard off during quiz
     if (isIOSLike()) {
       aEl.readOnly = true;
       aEl.setAttribute('inputmode', 'none');
-      // Don't focus the input on iPad — focusing can summon the keyboard on some versions
+      aEl.setAttribute('tabindex', '-1');
+      aEl.blur();
     } else {
       aEl.readOnly = false;
       aEl.setAttribute('inputmode', 'numeric');
-      // Focusing is fine on laptops/desktops
+      aEl.removeAttribute('tabindex');
       setTimeout(() => aEl.focus(), 0);
     }
 
@@ -226,6 +226,7 @@ function startTimer() {
     time--;
     const min = Math.floor(time / 60);
     const sec = time % 60;
+    // This keeps running, but the .timer element is hidden by CSS
     tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`;
     if (time <= 0) {
       endQuiz();
@@ -243,12 +244,14 @@ function endQuiz() {
   qEl.textContent = "";
   aEl.style.display = "none";
   if (padEl) padEl.style.display = "none";
-  tEl.style.display = "none";
+  tEl.style.display = "none"; // redundant (CSS hides it), but harmless
 
   // Restore normal behavior (tidy up listeners)
   aEl.readOnly = false;
   aEl.setAttribute('inputmode', 'numeric');
+  aEl.removeAttribute('tabindex');
   aEl.removeEventListener('touchstart', preventSoftKeyboard);
+  aEl.removeEventListener('mousedown', preventSoftKeyboard);
   aEl.removeEventListener('focus', preventSoftKeyboard, true);
 
   const asked = Math.min(current, allQuestions.length);
@@ -304,16 +307,12 @@ window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
 
 /* ============================================================
-   CALCULATOR KEYPAD
-   - Renders keys inside #answer-pad
-   - Taps fill #answer
-   - Enter triggers existing handleKey flow
+   CALCULATOR KEYPAD (iPad-safe)
    ============================================================ */
 (function () {
   if (!padEl || !aEl) return;
 
-  const MAX_LEN = 4; // tweak or set to null to disable limit
-
+  const MAX_LEN = 4;
   const layout = [
     '1','2','3',
     '4','5','6',
@@ -328,12 +327,24 @@ window.handleKey   = handleKey;
     btn.textContent = label;
     btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
 
-    // Calculator styling classes
     if (label === 'Enter') btn.classList.add('span-3', 'calc-btn--enter');
     if (label === 'Clear') btn.classList.add('calc-btn--clear');
     if (label === '⌫')     btn.classList.add('calc-btn--back');
 
-    btn.addEventListener('click', () => handlePress(label));
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (isIOSLike()) aEl.blur();
+      handlePress(label);
+    });
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (isIOSLike()) aEl.blur();
+      handlePress(label);
+    }, { passive: false });
+    btn.addEventListener('click', () => {
+      if (!isIOSLike()) handlePress(label);
+    });
+
     padEl.appendChild(btn);
   });
 
@@ -342,14 +353,12 @@ window.handleKey   = handleKey;
       case 'Clear':
         aEl.value = '';
         aEl.dispatchEvent(new Event('input', { bubbles: true }));
-        // Keep focus rules as set in showQuestion()
         break;
       case '⌫':
         aEl.value = aEl.value.slice(0, -1);
         aEl.dispatchEvent(new Event('input', { bubbles: true }));
         break;
       case 'Enter':
-        // Trigger your existing Enter logic
         if (!timerStarted) { startTimer(); timerStarted = true; }
         window.handleKey({ key: 'Enter' });
         break;
@@ -362,7 +371,6 @@ window.handleKey   = handleKey;
     }
   }
 
-  // Optional: restrict hardware keys to digits (keep controls)
   aEl.addEventListener('keydown', (e) => {
     const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
     if (allowed.includes(e.key)) return;
