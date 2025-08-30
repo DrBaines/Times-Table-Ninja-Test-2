@@ -55,6 +55,19 @@ async function flushQueue() {
 }
 
 window.addEventListener("online", flushQueue);
+
+
+function selectMode(m) {
+  mode = m; // 'baseline' or 'tester'
+  const elB = document.getElementById('mode-baseline');
+  const elT = document.getElementById('mode-tester');
+  if (elB && elT) {
+    elB.classList.toggle('selected', mode === 'baseline');
+    elT.classList.toggle('selected', mode === 'tester');
+  }
+} 
+
+
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") flushQueue();
 });
