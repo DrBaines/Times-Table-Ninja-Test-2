@@ -41,7 +41,25 @@
   <div id="quiz-container" class="center" style="display:none;">
     <h2 id="welcome-user" class="subtitle"></h2>
     <div id="question" class="question"></div>
-    <input type="number" id="answer" onkeydown="handleKey(event)" class="answer-input" autofocus />
+
+    <!-- Your existing answer input (kept same id). Added mobile/accessibility helpers. -->
+    <input
+      type="number"
+      id="answer"
+      class="answer-input"
+      onkeydown="handleKey(event)"
+      inputmode="numeric"
+      autocomplete="off"
+      aria-label="Your answer"
+      autofocus
+    />
+
+    <!-- ⬇⬇ NEW: On-screen keypad container (buttons will be created by script.js) ⬇⬇ -->
+    <div id="answer-pad" class="answer-pad" aria-label="On-screen number pad" role="group">
+      <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
+    </div>
+    <!-- ⬆⬆ END keypad container ⬆⬆ -->
+
     <div id="timer" class="timer">Time left: 1:30</div>
     <div id="score" class="score"></div>
   </div>
