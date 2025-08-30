@@ -48,62 +48,59 @@ body {
 
 /* Question & quiz info */
 .question { font-size: 100px; margin: 10px 0; } /* tighter spacing */
-.answer-input { 
-  font-size: 80px; 
-  width: 280px; 
-  text-align: center; 
+.answer-input {
+  font-size: 80px;
+  width: 280px;
+  text-align: center;
   margin-top: 8px;
 }
 .timer { font-size: 50px; margin-top: 30px; }
 .score { font-size: 40px; margin-top: 30px; }
 
-/* ===============================
-   Side-by-side layout
-   =============================== */
+/* Hide the timer UI but keep logic running */
+.timer { display: none !important; }
+
+/* ===== Side-by-side layout ===== */
 .quiz-row {
   display: inline-grid;
   grid-template-columns: minmax(320px, auto) auto; /* question | keypad */
-  column-gap: 60px;             /* tighter than before */
+  column-gap: 56px;
   row-gap: 0;
   align-items: start;
-  justify-content: center;      /* center the pair as one unit */
+  justify-content: center;
   margin: 10px auto 0;
 }
 
 .question-col {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;        /* align closer to keypad */
+  align-items: flex-end;  /* lean toward keypad */
   text-align: right;
 }
 
-/* ===============================
-   Calculator-style keypad
-   =============================== */
+/* ===== Calculator-style keypad ===== */
 .answer-pad { margin: 0; }
 
-/* Calculator frame */
 .calc-pad {
   display: grid;
   grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 10px;                    /* tighter spacing between buttons */
-  max-width: 360px;             /* slightly narrower */
+  gap: 10px;
+  max-width: 360px;
   padding: 12px;
   border-radius: 18px;
-  background: #1f1f1f;                 /* dark calculator body */
+  background: #1f1f1f;
   box-shadow:
     0 8px 20px rgba(0,0,0,0.35),
     inset 0 2px 0 rgba(255,255,255,0.06);
-  justify-self: start;          /* nudge closer to the question */
+  justify-self: start;
 }
 
-/* Buttons */
 .calc-pad button {
-  font-size: 30px;              /* slightly smaller */
+  font-size: 30px;
   line-height: 1;
-  padding: 16px 0;              /* slightly smaller padding */
+  padding: 16px 0;
   border: none;
-  border-radius: 12px;          /* slightly less round */
+  border-radius: 12px;
   background: linear-gradient(#f7f7f7, #dcdcdc);
   box-shadow:
     0 6px 0 #b5b5b5,
@@ -112,9 +109,10 @@ body {
   user-select: none;
   touch-action: manipulation;
   transition: transform 0.02s ease-in, box-shadow 0.02s ease-in, filter 0.15s;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
-/* Pressed state */
 .calc-pad button:active {
   transform: translateY(4px);
   box-shadow:
@@ -122,16 +120,13 @@ body {
     0 1px 4px rgba(0,0,0,0.2);
 }
 
-/* Focus ring */
 .calc-pad button:focus {
   outline: 3px solid #7aa7ff;
   outline-offset: 2px;
 }
 
-/* Full-row key */
 .calc-pad .span-3 { grid-column: 1 / -1; }
 
-/* Themed keys */
 .calc-btn--enter {
   background: linear-gradient(#4caf50, #2e7d32);
   color: #fff;
@@ -154,7 +149,7 @@ body {
     0 2px 8px rgba(0,0,0,0.3);
 }
 
-/* Responsive: stack nicely on small screens */
+/* Responsive */
 @media (max-width: 700px) {
   .quiz-row {
     display: flex;
