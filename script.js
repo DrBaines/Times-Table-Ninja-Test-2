@@ -1,4 +1,4 @@
-/* =========================================================
+ /* =========================================================
    Times Tables Trainer - Script (improved Aug 2025, no corrected answers in review)
    REMINDER: bump versions in index.html when you change files:
    <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
