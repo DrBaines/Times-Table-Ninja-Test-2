@@ -1,11 +1,9 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet
+   Times Tables Trainer - Script
    REMINDER:
-   If you make changes here, bump the version number in
-   index.html so browsers fetch the latest file:
-   
-   <link rel="stylesheet" href="./styles.css?v=frontpage-4" />
-   <script src="./script.js?v=frontpage-4"></script>
+   If you update this file, bump the version numbers in index.html:
+   <link rel="stylesheet" href="./styles.css?v=frontpage-5" />
+   <script src="./script.js?v=frontpage-5"></script>
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -77,18 +75,17 @@ let username = "";
 // Offer these times tables:
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 
-/******************** ELEMENTS ********************/
-const qEl  = document.getElementById("question");
-const aEl  = document.getElementById("answer");
-const tEl  = document.getElementById("timer");
-const sEl  = document.getElementById("score");
-const padEl = document.getElementById("answer-pad");
+/******************** ELEMENT HELPERS (fresh lookups) ********************/
+function getQEl()       { return document.getElementById("question"); }
+function getAnswerEl()  { return document.getElementById("answer"); }
+function getTimerEl()   { return document.getElementById("timer"); }
+function getScoreEl()   { return document.getElementById("score"); }
+function getPadEl()     { return document.getElementById("answer-pad"); }
 
-// Screens
-const homeScreen  = document.getElementById("home-screen");
-const miniScreen  = document.getElementById("mini-screen");
-const ninjaScreen = document.getElementById("ninja-screen");
-const quizScreen  = document.getElementById("quiz-container");
+function getHome()  { return document.getElementById("home-screen"); }
+function getMini()  { return document.getElementById("mini-screen"); }
+function getNinja() { return document.getElementById("ninja-screen"); }
+function getQuiz()  { return document.getElementById("quiz-container"); }
 
 /******************** DEVICE DETECTION ********************/
 function isIOSLike() {
@@ -98,6 +95,7 @@ function isIOSLike() {
   return iOS || iPadAsMac;
 }
 function preventSoftKeyboard(e) {
+  const aEl = getAnswerEl();
   if (aEl && aEl.readOnly) {
     e.preventDefault();
     aEl.blur();
@@ -109,8 +107,8 @@ function show(el) { if (el) el.style.display = "block"; }
 function hide(el) { if (el) el.style.display = "none"; }
 
 function goHome() {
-  hide(miniScreen); hide(ninjaScreen); hide(quizScreen);
-  show(homeScreen);
+  hide(getMini()); hide(getNinja()); hide(getQuiz());
+  show(getHome());
 }
 
 function goMini() {
@@ -125,22 +123,22 @@ function goMini() {
       : `Choose your times table:`;
   }
 
-  hide(homeScreen); hide(ninjaScreen); hide(quizScreen);
-  show(miniScreen);
+  hide(getHome()); hide(getNinja()); hide(getQuiz());
+  show(getMini());
 }
 
 function goNinja() {
   const name = document.getElementById('home-username')?.value.trim() || "";
   if (name) username = name;
 
-  hide(homeScreen); hide(miniScreen); hide(quizScreen);
-  show(ninjaScreen);
+  hide(getHome()); hide(getMini()); hide(getQuiz());
+  show(getNinja());
 }
 
 function quitToMini() {
   if (timer) { clearInterval(timer); timer = null; }
-  hide(quizScreen);
-  show(miniScreen);
+  hide(getQuiz());
+  show(getMini());
 }
 
 /******************** UI BUILDERS ********************/
@@ -161,8 +159,16 @@ function buildTableButtons() {
 
 /* Build the keypad only if it isn't present (robust across screen switches) */
 function buildKeypadIfNeeded() {
-  if (!padEl || !aEl) return;
-  if (padEl.childElementCount > 0) return; // already built
+  const pad = getPadEl();
+  const aEl = getAnswerEl();
+  if (!pad || !aEl) return;
+
+  pad.classList.add('calc-pad'); // ensure grid class exists
+
+  if (pad.childElementCount > 0) {
+    pad.style.display = "grid";
+    return; // already built
+  }
 
   const MAX_LEN = 4;
   const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
@@ -192,7 +198,7 @@ function buildKeypadIfNeeded() {
       handlePadPress(label);
     });
 
-    padEl.appendChild(btn);
+    pad.appendChild(btn);
   });
 
   function handlePadPress(label) {
@@ -225,6 +231,8 @@ function buildKeypadIfNeeded() {
     if (!/^\d$/.test(e.key)) e.preventDefault();
     if (aEl.value.length >= MAX_LEN && /^\d$/.test(e.key)) e.preventDefault();
   }, { once: true });
+
+  pad.style.display = "grid";
 }
 
 /******************** SELECTION ********************/
@@ -236,7 +244,7 @@ function selectTable(base) {
   });
 }
 
-/* Init: highlight Baseline, build table buttons after DOM ready */
+/* Init: highlight Baseline, build table buttons + (optionally) keypad after DOM ready */
 (function initModeSelection(){
   const elB = document.getElementById('mode-baseline');
   const elT = document.getElementById('mode-tester');
@@ -246,8 +254,8 @@ function selectTable(base) {
   }
 })();
 document.addEventListener('DOMContentLoaded', buildTableButtons);
-if (document.getElementById('table-choices')) buildTableButtons();
-document.addEventListener('DOMContentLoaded', buildKeypadIfNeeded); // extra safety
+// Optional early build; the definitive build happens when quiz screen is shown
+document.addEventListener('DOMContentLoaded', buildKeypadIfNeeded);
 
 /******************** QUESTION BUILDER ********************/
 function buildQuestions(base) {
@@ -282,66 +290,78 @@ function startQuiz() {
   score = 0;
   current = 0;
   userAnswers = [];
+  const tEl = getTimerEl();
   const initMin = Math.floor(time / 60);
   const initSec = time % 60;
-  tEl.textContent = `Time left: ${initMin}:${initSec < 10 ? "0" : ""}${initSec}`;
+  if (tEl) tEl.textContent = `Time left: ${initMin}:${initSec < 10 ? "0" : ""}${initSec}`;
 
   allQuestions = buildQuestions(selectedBase);
 
-  hide(homeScreen); hide(miniScreen); hide(ninjaScreen);
-  show(quizScreen);
+  hide(getHome()); hide(getMini()); hide(getNinja());
+  show(getQuiz());
 
   const modeLabel = (mode === 'tester') ? ' (Tester)' : '';
-  document.getElementById("welcome-user").textContent = `Practising ${selectedBase}×${modeLabel}`;
+  const welcome = document.getElementById("welcome-user");
+  if (welcome) welcome.textContent = `Practising ${selectedBase}×${modeLabel}`;
 
-  aEl.style.display = "inline-block";
-  aEl.disabled = false;
-
-  // iPad keyboard suppression
-  if (isIOSLike()) {
-    aEl.readOnly = true;
-    aEl.setAttribute('inputmode', 'none');
-    aEl.setAttribute('tabindex', '-1');
-    aEl.blur();
-    aEl.addEventListener('touchstart', preventSoftKeyboard, { passive: false });
-    aEl.addEventListener('mousedown', preventSoftKeyboard, { passive: false });
-    aEl.addEventListener('focus', preventSoftKeyboard, true);
-  } else {
-    aEl.readOnly = false;
-    aEl.setAttribute('inputmode', 'numeric');
-    aEl.removeAttribute('tabindex');
-    aEl.removeEventListener('touchstart', preventSoftKeyboard);
-    aEl.removeEventListener('mousedown', preventSoftKeyboard);
-    aEl.removeEventListener('focus', preventSoftKeyboard, true);
-  }
-
-  // Ensure keypad exists and is visible
-  buildKeypadIfNeeded();
-  if (padEl) padEl.style.display = "grid";
-
-  showQuestion();
-}
-
-function showQuestion() {
-  if (current < allQuestions.length && !ended) {
-    qEl.textContent = allQuestions[current].q;
-    aEl.value = "";
-    aEl.disabled = false;
+  const aEl = getAnswerEl();
+  if (aEl) {
     aEl.style.display = "inline-block";
+    aEl.disabled = false;
 
+    // iPad keyboard suppression
     if (isIOSLike()) {
       aEl.readOnly = true;
       aEl.setAttribute('inputmode', 'none');
       aEl.setAttribute('tabindex', '-1');
       aEl.blur();
+      aEl.addEventListener('touchstart', preventSoftKeyboard, { passive: false });
+      aEl.addEventListener('mousedown', preventSoftKeyboard, { passive: false });
+      aEl.addEventListener('focus', preventSoftKeyboard, true);
     } else {
       aEl.readOnly = false;
       aEl.setAttribute('inputmode', 'numeric');
       aEl.removeAttribute('tabindex');
-      setTimeout(() => aEl.focus(), 0);
+      aEl.removeEventListener('touchstart', preventSoftKeyboard);
+      aEl.removeEventListener('mousedown', preventSoftKeyboard);
+      aEl.removeEventListener('focus', preventSoftKeyboard, true);
+    }
+  }
+
+  // Ensure keypad exists and is visible — build AFTER showing quiz screen
+  buildKeypadIfNeeded();
+  const pad = getPadEl();
+  if (pad) pad.style.display = "grid";
+
+  showQuestion();
+}
+
+function showQuestion() {
+  const qEl = getQEl();
+  const aEl = getAnswerEl();
+
+  if (current < allQuestions.length && !ended) {
+    if (qEl) qEl.textContent = allQuestions[current].q;
+    if (aEl) {
+      aEl.value = "";
+      aEl.disabled = false;
+      aEl.style.display = "inline-block";
+
+      if (isIOSLike()) {
+        aEl.readOnly = true;
+        aEl.setAttribute('inputmode', 'none');
+        aEl.setAttribute('tabindex', '-1');
+        aEl.blur();
+      } else {
+        aEl.readOnly = false;
+        aEl.setAttribute('inputmode', 'numeric');
+        aEl.removeAttribute('tabindex');
+        setTimeout(() => aEl.focus(), 0);
+      }
     }
 
-    if (padEl) padEl.style.display = "grid";
+    const pad = getPadEl();
+    if (pad) pad.style.display = "grid";
   } else {
     endQuiz();
   }
@@ -351,7 +371,8 @@ function handleKey(e) {
   if (e.key !== "Enter" || ended) return;
   if (!timerStarted) { startTimer(); timerStarted = true; }
 
-  const raw = aEl.value.trim();
+  const aEl = getAnswerEl();
+  const raw = (aEl?.value || "").trim();
   const userAns = raw === "" ? NaN : parseInt(raw, 10);
   userAnswers.push(isNaN(userAns) ? "" : userAns);
 
@@ -367,9 +388,10 @@ function startTimer() {
   if (timer) clearInterval(timer);
   timer = setInterval(() => {
     time--;
+    const tEl = getTimerEl();
     const min = Math.floor(time / 60);
     const sec = time % 60;
-    tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`; // hidden by CSS
+    if (tEl) tEl.textContent = `Time left: ${min}:${sec < 10 ? "0" : ""}${sec}`; // hidden by CSS
     if (time <= 0) {
       endQuiz();
     }
@@ -383,24 +405,34 @@ function endQuiz() {
 
   if (timer) { clearInterval(timer); timer = null; }
 
-  qEl.textContent = "";
-  aEl.style.display = "none";
-  if (padEl) padEl.style.display = "none";
-  tEl.style.display = "none";
+  const qEl = getQEl();
+  const aEl = getAnswerEl();
+  const tEl = getTimerEl();
+  const pad = getPadEl();
+  const sEl = getScoreEl();
+
+  if (qEl) qEl.textContent = "";
+  if (aEl) aEl.style.display = "none";
+  if (pad) pad.style.display = "none";
+  if (tEl) tEl.style.display = "none";
 
   // Restore input behavior
-  aEl.readOnly = false;
-  aEl.setAttribute('inputmode', 'numeric');
-  aEl.removeAttribute('tabindex');
-  aEl.removeEventListener('touchstart', preventSoftKeyboard);
-  aEl.removeEventListener('mousedown', preventSoftKeyboard);
-  aEl.removeEventListener('focus', preventSoftKeyboard, true);
+  if (aEl) {
+    aEl.readOnly = false;
+    aEl.setAttribute('inputmode', 'numeric');
+    aEl.removeAttribute('tabindex');
+    aEl.removeEventListener('touchstart', preventSoftKeyboard);
+    aEl.removeEventListener('mousedown', preventSoftKeyboard);
+    aEl.removeEventListener('focus', preventSoftKeyboard, true);
+  }
 
   const asked = Math.min(current, allQuestions.length);
   const total = allQuestions.length;
 
-  sEl.innerHTML = `${username}, you scored ${score}/${total} <br><br>
-    <button onclick="showAnswers()" style="font-size:32px; padding:15px 40px;">Click to display answers</button>`;
+  if (sEl) {
+    sEl.innerHTML = `${username}, you scored ${score}/${total} <br><br>
+      <button onclick="showAnswers()" style="font-size:32px; padding:15px 40px;">Click to display answers</button>`;
+  }
 
   const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const modeMark = (mode === 'tester') ? ' (tester)' : '';
@@ -429,6 +461,8 @@ function endQuiz() {
 
 /******************** ANSWER REVIEW ********************/
 function showAnswers() {
+  const sEl = getScoreEl();
+  if (!sEl) return;
   let html = "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>";
   allQuestions.forEach((q, i) => {
     const userAns = userAnswers[i] !== undefined ? userAnswers[i] : "";
