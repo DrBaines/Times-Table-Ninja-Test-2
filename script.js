@@ -73,6 +73,7 @@ const qEl = document.getElementById("question");
 const aEl = document.getElementById("answer");
 const tEl = document.getElementById("timer");
 const sEl = document.getElementById("score");
+const padEl = document.getElementById("answer-pad"); // <-- keypad container
 
 /******************** SELECTION ********************/
 function selectTable(base) {
@@ -159,6 +160,7 @@ function showQuestion() {
     aEl.value = "";
     aEl.disabled = false;
     aEl.style.display = "inline-block";
+    if (padEl) padEl.style.display = "grid"; // <-- show keypad with each question
     setTimeout(() => aEl.focus(), 0);
   } else {
     endQuiz();
@@ -203,6 +205,7 @@ function endQuiz() {
 
   qEl.textContent = "";
   aEl.style.display = "none";
+  if (padEl) padEl.style.display = "none"; // <-- hide keypad at end
   tEl.style.display = "none";
 
   const asked = Math.min(current, allQuestions.length);
@@ -259,3 +262,68 @@ window.selectTable = selectTable;
 window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
+
+/* ============================================================
+   ON-SCREEN KEYPAD (creates buttons inside #answer-pad)
+   - Taps fill the #answer input
+   - "⌫" deletes one digit, "Clear" wipes, "Enter" calls handleKey()
+   ============================================================ */
+(function () {
+  if (!padEl || !aEl) return;
+
+  const MAX_LEN = 4; // change or set to null to allow any length
+  const labels = [
+    '1','2','3',
+    '4','5','6',
+    '7','8','9',
+    '⌫','0','Clear',
+    'Enter'
+  ];
+
+  // Build the buttons
+  labels.forEach((label) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
+    if (label === 'Enter') btn.classList.add('span-3');
+    btn.addEventListener('click', () => handlePress(label));
+    padEl.appendChild(btn);
+  });
+
+  function handlePress(label) {
+    switch (label) {
+      case 'Clear':
+        aEl.value = '';
+        aEl.dispatchEvent(new Event('input', { bubbles: true }));
+        aEl.focus();
+        break;
+      case '⌫':
+        aEl.value = aEl.value.slice(0, -1);
+        aEl.dispatchEvent(new Event('input', { bubbles: true }));
+        aEl.focus();
+        break;
+      case 'Enter':
+        // Trigger your existing flow exactly as if Enter was pressed
+        window.handleKey({ key: 'Enter' });
+        break;
+      default:
+        if (/^\d$/.test(label)) {
+          if (typeof MAX_LEN === 'number' && aEl.value.length >= MAX_LEN) return;
+          aEl.value += label;
+          aEl.dispatchEvent(new Event('input', { bubbles: true }));
+          aEl.focus();
+        }
+    }
+  }
+
+  // Optional: restrict hardware keyboard to digits (keeps Backspace/Delete/Arrows/Tab/Enter)
+  aEl.addEventListener('keydown', (e) => {
+    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
+    if (allowed.includes(e.key)) return;
+    if (!/^\d$/.test(e.key)) e.preventDefault();
+    if (typeof MAX_LEN === 'number' && aEl.value.length >= MAX_LEN && /^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+})();
