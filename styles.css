@@ -98,7 +98,7 @@ body {
 
 /* Buttons */
 .calc-pad button {
-  font-size: 34px;               /* a bit larger */
+  font-size: 46px;               /* a bit larger */
   font-weight: bold;             /* bolder numbers */
   line-height: 1;
   padding: 16px 0;
