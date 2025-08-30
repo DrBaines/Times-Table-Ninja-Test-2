@@ -94,24 +94,22 @@ body {
 }
 
 /* ===============================
-   Numpad layout (fixed-size grid)
+   Numpad layout (smaller, wider spacing from questions)
    =============================== */
 .answer-pad { margin: 0; }
 
 .calc-pad {
   display: grid;
-  /* 4 equal columns; each cell 90x90 by default */
-  grid-template-columns: repeat(4, 90px);
-  grid-auto-rows: 90px;
-  /* Named areas guarantee positions */
+  grid-template-columns: repeat(4, 70px);   /* smaller keys (was 90px) */
+  grid-auto-rows: 70px;
   grid-template-areas:
     "seven eight nine back"
     "four  five  six  enter"
     "one   two   three enter"
     "zero  zero  clear enter";
-  gap: 16px;
-  width: max-content;     /* shrink-wrap to the grid */
-  padding: 8px 0;         /* light padding */
+  gap: 14px;                                /* slightly smaller gaps between keys */
+  width: max-content;
+  padding: 8px 0;
   background: transparent;
   border-radius: 12px;
 }
@@ -119,16 +117,12 @@ body {
 /* Base button look */
 .calc-pad button {
   border: 2px solid #333;
-  border-radius: 8px;      /* squarer corners */
+  border-radius: 8px;
   background: #fff;
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
   transition: transform 0.05s ease-in, background 0.1s;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-
-  /* Fill the grid cell neatly */
   width: 100%;
   height: 100%;
   display: flex;
@@ -138,16 +132,16 @@ body {
 
 /* Numbers: big, bold, bright blue */
 .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-  font-size: 42px;
+  font-size: 34px;   /* adjust font size to fit smaller keys */
   font-weight: bold;
   color: #007bff;
 }
 
-/* Special keys: smaller, dark grey text */
+/* Special keys */
 .calc-btn--enter,
 .calc-btn--clear,
 .calc-btn--back {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: normal;
   color: #444;
 }
@@ -156,7 +150,7 @@ body {
 .calc-pad button:active { transform: scale(0.96); background: #f0f0f0; }
 .calc-pad button:focus  { outline: 3px solid #7aa7ff; outline-offset: 2px; }
 
-/* Place each key in its area */
+/* Grid areas */
 .key-7     { grid-area: seven; }
 .key-8     { grid-area: eight; }
 .key-9     { grid-area: nine;  }
@@ -164,22 +158,19 @@ body {
 .key-4     { grid-area: four;  }
 .key-5     { grid-area: five;  }
 .key-6     { grid-area: six;   }
-.key-enter { grid-area: enter; }          /* spans rows 2–4 via grid-areas */
+.key-enter { grid-area: enter; }
 .key-1     { grid-area: one;   }
 .key-2     { grid-area: two;   }
 .key-3     { grid-area: three; }
-.key-0     { grid-area: zero;  }          /* spans two columns via area */
+.key-0     { grid-area: zero;  }
 .key-clear { grid-area: clear; }
 
-/* Responsive: make cells smaller on narrow screens */
-@media (max-width: 600px) {
-  .calc-pad {
-    grid-template-columns: repeat(4, 70px);
-    grid-auto-rows: 70px;
-    gap: 12px;
-  }
-  .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-    font-size: 34px;
-  }
-  .calc-btn--enter, .calc-btn--clear, .calc-btn--back { font-size: 20px; }
+/* Wider gap between question column and keypad */
+.quiz-row {
+  display: inline-grid;
+  grid-template-columns: minmax(380px, auto) auto;
+  column-gap: 60px;     /* wider gap (was 24px) */
+  align-items: start;
+  justify-content: center;
+  margin: 60px auto 0;
 }
