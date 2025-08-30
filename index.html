@@ -4,12 +4,8 @@
   <meta charset="UTF-8" />
   <title>Times Table Quiz (2× / 3× / 4×)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Favicon file in repo root -->
   <link rel="icon" href="./favicon.ico">
-
-  <!-- Your stylesheet (make sure styles.css is next to index.html) -->
-  <link rel="stylesheet" href="./styles.css?v=2025-08-30-01" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <!-- Welcome / Login -->
@@ -42,7 +38,7 @@
     <h2 id="welcome-user" class="subtitle"></h2>
     <div id="question" class="question"></div>
 
-    <!-- Your existing answer input (kept same id). Added mobile/accessibility helpers. -->
+    <!-- Answer input -->
     <input
       type="number"
       id="answer"
@@ -54,17 +50,15 @@
       autofocus
     />
 
-    <!-- ⬇⬇ NEW: On-screen keypad container (buttons will be created by script.js) ⬇⬇ -->
-    <div id="answer-pad" class="answer-pad" aria-label="On-screen number pad" role="group">
+    <!-- Calculator-style keypad -->
+    <div id="answer-pad" class="answer-pad calc-pad" aria-label="On-screen number pad" role="group">
       <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
     </div>
-    <!-- ⬆⬆ END keypad container ⬆⬆ -->
 
     <div id="timer" class="timer">Time left: 1:30</div>
     <div id="score" class="score"></div>
   </div>
 
-  <!-- Load script last so functions are available for onclick handlers -->
-  <script src="./script.js?v=2025-08-30-01"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
