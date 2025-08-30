@@ -1,241 +1,125 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet (refined Aug 2025)
-   REMINDER: bump the version numbers in index.html when you change files:
-   <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
-   <script src="./script.js?v=frontpage-8"></script>
+   Times Tables Trainer - Stylesheet (frontpage-9)
+   - Adds .answer-echo to mirror input on iOS if readOnly
+   - Ensures input text color is explicit (visibility)
    ========================================================= */
 
-/* ===== CSS Custom Properties (Theme) ===== */
 :root{
   --bg: #eef;
-  --text: #111827;              /* slate-900 */
-  --muted: #374151;             /* gray-700 */
-  --primary: #1e3a8a;           /* blue-800 */
+  --text: #111827;
+  --muted: #374151;
+  --primary: #1e3a8a;
   --primary-contrast: #ffffff;
-  --accent: #4caf50;            /* success */
+  --accent: #4caf50;
   --accent-contrast: #ffffff;
   --warn: #ffb300;
   --warn-contrast: #111827;
-  --blue: #007bff;              /* keypad digits */
-  --key-border: #1f2937;        /* gray-800 */
-  --focus: #7aa7ff;             /* focus ring */
+  --blue: #007bff;
+  --key-border: #1f2937;
+  --focus: #7aa7ff;
   --card: #ffffff;
   --shadow: rgba(15, 23, 42, 0.12);
 }
 
-/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
-  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
 
-/* Base layout */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-}
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
+
 .center { text-align: center; margin-top: 80px; }
 .title { font-size: 56px; margin: 0 0 20px; }
 .subtitle { font-size: 48px; margin: 0 0 20px; }
 .info-text { font-size: 22px; margin: 10px 0 20px; color: #444; }
+.visually-hidden{ position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
 
-/* Utility for screen-reader-only text */
-.visually-hidden{ position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
+.choice-buttons { display:flex; justify-content:center; gap:16px; margin:12px 0 30px; flex-wrap:wrap; }
+.choice { font-size:42px; padding:18px 36px; border:3px solid #333; background: var(--card); border-radius:12px; cursor:pointer; box-shadow:0 4px 10px var(--shadow); }
+.choice:hover{ filter:brightness(.98); }
+.choice:focus{ outline:4px solid var(--focus); outline-offset:3px; }
+.choice.selected{ background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); }
 
-/* Buttons and inputs */
-.choice-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin: 12px 0 30px;
-  flex-wrap: wrap;
-}
-.choice {
-  font-size: 42px;
-  padding: 18px 36px;
-  border: 3px solid #333;
-  background: var(--card);
-  border-radius: 12px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px var(--shadow);
-}
-.choice:hover { filter: brightness(0.98); }
-.choice:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
-.choice.selected {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  border-color: var(--accent);
-}
+.stack-mobile { gap:20px; }
+.name-row { margin:10px 0 20px; }
 
-.stack-mobile { gap: 20px; }
+.big-input { font-size:44px; padding:18px; width:520px; max-width:92vw; text-align:center; border-radius:12px; border:2px solid #222; background:var(--card); box-shadow:0 6px 14px var(--shadow); }
+.big-input:focus { outline:4px solid var(--focus); outline-offset:3px; }
 
-.name-row { margin: 10px 0 20px; }
-
-.big-input {
-  font-size: 44px;
-  padding: 18px;
-  width: 520px;
-  max-width: 92vw;
-  text-align: center;
-  border-radius: 12px;
-  border: 2px solid #222;
-  background: var(--card);
-  box-shadow: 0 6px 14px var(--shadow);
-}
-.big-input:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
-
-.big-button {
-  font-size: 28px;
-  padding: 16px 26px;
-  cursor: pointer;
-  border: 2px solid #222;
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow: 0 6px 14px var(--shadow);
-}
+.big-button { font-size:28px; padding:16px 26px; cursor:pointer; border:2px solid #222; border-radius:12px; background:var(--card); box-shadow:0 6px 14px var(--shadow); }
 .big-button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .big-button.secondary { background: var(--warn); color: var(--warn-contrast); border-color: var(--warn); }
-.big-button:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
+.big-button:focus{ outline:4px solid var(--focus); outline-offset:3px; }
 
 /* Question & quiz info */
-.question { font-size: 120px; margin: 0 0 30px; }
-.answer-input {
-  font-size: 100px;
-  width: 340px;
-  text-align: center;
-  margin-top: 0;
-  border-radius: 12px;
-  border: 3px solid #111;
-  background: var(--card);
-  box-shadow: 0 6px 14px var(--shadow);
+.question { font-size:120px; margin:0 0 30px; }
+.answer-input{
+  font-size:100px; width:340px; text-align:center; margin-top:0;
+  border-radius:12px; border:3px solid #111; background: var(--card);
+  box-shadow:0 6px 14px var(--shadow);
+  color: var(--text);              /* explicit to avoid platform quirks */
 }
-.answer-input:focus { outline: 4px solid var(--focus); outline-offset: 3px; }
-.timer { font-size: 50px; margin-top: 30px; }
-.score { font-size: 40px; margin-top: 30px; }
+.answer-input:focus{ outline:4px solid var(--focus); outline-offset:3px; }
 
-/* Hide the timer UI but keep logic running */
-.timer { display: none !important; }
-
-/* ===== Side-by-side layout (question | keypad) ===== */
-.quiz-row {
-  display: inline-grid;
-  grid-template-columns: minmax(380px, auto) auto;
-  column-gap: 60px;                 /* wider gap from calculator */
-  align-items: start;
-  justify-content: center;
-  margin: 60px auto 0;
+/* Echo display (used on iOS when input is readOnly/blurred) */
+.answer-echo{
+  display:none;
+  font-size:100px;
+  width:340px;
+  margin-top:10px;
+  font-weight:700;
+  text-align:center;
+  color: var(--text);
 }
 
-.question-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;               /* centre horizontally */
-  text-align: center;                /* centre question text */
-}
+.timer { font-size:50px; margin-top:30px; display:none !important; } /* hidden UI */
+.score { font-size:40px; margin-top:30px; }
 
-/* ===== Numpad layout (fixed-size grid, tall Enter, wide 0) ===== */
-.answer-pad { margin: 0; }
+/* Layout */
+.quiz-row { display:inline-grid; grid-template-columns:minmax(380px, auto) auto; column-gap:60px; align-items:start; justify-content:center; margin:60px auto 0; }
+.question-col { display:flex; flex-direction:column; align-items:center; text-align:center; }
 
-.calc-pad {
-  display: grid;
-  grid-template-columns: repeat(4, 70px);   /* smaller keys */
-  grid-auto-rows: 70px;
+/* Keypad */
+.answer-pad { margin:0; }
+.calc-pad{
+  display:grid; grid-template-columns:repeat(4,70px); grid-auto-rows:70px;
   grid-template-areas:
     "seven eight nine back"
     "four  five  six  enter"
     "one   two   three enter"
     "zero  zero  clear enter";
-  gap: 14px;
-  width: max-content;
-  padding: 8px 0;
-  background: transparent;
-  border-radius: 12px;
+  gap:14px; width:max-content; padding:8px 0; background:transparent; border-radius:12px;
 }
-
-/* Base button look */
-.calc-pad button {
-  border: 2px solid var(--key-border);
-  border-radius: 12px;                /* consistent rounded corners */
-  background: var(--card);
-  cursor: pointer;
-  user-select: none;
-  touch-action: manipulation;
-  transition: transform 0.05s ease-in, background 0.1s;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px var(--shadow);
+.calc-pad button{
+  border:2px solid var(--key-border); border-radius:12px; background:var(--card);
+  cursor:pointer; user-select:none; touch-action:manipulation; transition:transform .05s ease-in, background .1s;
+  width:100%; height:100%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px var(--shadow);
 }
+.calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back){ font-size:34px; font-weight:800; color:var(--blue); }
+.calc-btn--enter, .calc-btn--clear, .calc-btn--back{ font-size:20px; font-weight:600; color:#444; }
+.calc-pad button:hover{ filter:brightness(.98); }
+.calc-pad button:active{ transform:scale(.96); background:#f0f0f0; }
+.calc-pad button:focus{ outline:4px solid var(--focus); outline-offset:3px; }
 
-/* Numbers: big, bold, bright blue */
-.calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-  font-size: 34px;                   /* fits 70px keys */
-  font-weight: 800;
-  color: var(--blue);
-}
+.key-7{grid-area:seven;} .key-8{grid-area:eight;} .key-9{grid-area:nine;} .key-back{grid-area:back;}
+.key-4{grid-area:four;} .key-5{grid-area:five;} .key-6{grid-area:six;} .key-enter{grid-area:enter;}
+.key-1{grid-area:one;} .key-2{grid-area:two;} .key-3{grid-area:three;} .key-0{grid-area:zero;} .key-clear{grid-area:clear;}
 
-/* Special keys: smaller, dark grey text */
-.calc-btn--enter,
-.calc-btn--clear,
-.calc-btn--back {
-  font-size: 20px;
-  font-weight: 600;
-  color: #444;
-}
-
-/* Pressed + focus */
-.calc-pad button:hover { filter: brightness(0.98); }
-.calc-pad button:active { transform: scale(0.96); background: #f0f0f0; }
-.calc-pad button:focus  { outline: 4px solid var(--focus); outline-offset: 3px; }
-
-/* Grid areas */
-.key-7     { grid-area: seven; }
-.key-8     { grid-area: eight; }
-.key-9     { grid-area: nine;  }
-.key-back  { grid-area: back;  }
-.key-4     { grid-area: four;  }
-.key-5     { grid-area: five;  }
-.key-6     { grid-area: six;   }
-.key-enter { grid-area: enter; }
-.key-1     { grid-area: one;   }
-.key-2     { grid-area: two;   }
-.key-3     { grid-area: three; }
-.key-0     { grid-area: zero;  }
-.key-clear { grid-area: clear; }
-
-/* Smaller screens */
-@media (max-width: 700px) {
-  .quiz-row {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 40px;
-  }
-  .subtitle { font-size: 36px; }
-  .question { font-size: 80px; }
-  .answer-input { font-size: 72px; width: 280px; }
-  .calc-pad {
-    grid-template-columns: repeat(4, 56px);
-    grid-auto-rows: 56px;
-    gap: 10px;
-  }
-  .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-    font-size: 28px;
-  }
-  .calc-btn--enter, .calc-btn--clear, .calc-btn--back { font-size: 18px; }
+@media (max-width:700px){
+  .quiz-row{ display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:40px; }
+  .subtitle{ font-size:36px; }
+  .question{ font-size:80px; }
+  .answer-input, .answer-echo{ font-size:72px; width:280px; }
+  .calc-pad{ grid-template-columns:repeat(4,56px); grid-auto-rows:56px; gap:10px; }
+  .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back){ font-size:28px; }
+  .calc-btn--enter, .calc-btn--clear, .calc-btn--back{ font-size:18px; }
 }
 
 /* Smaller welcome lines */
-#welcome-user { font-size: 28px; margin-bottom: 12px; font-weight: normal; color: #333; }
-#hello-user { font-size: 28px; font-weight: normal; color: #333; }
+#welcome-user { font-size:28px; margin-bottom:12px; font-weight:normal; color:#333; }
+#hello-user   { font-size:28px; font-weight:normal; color:#333; }
 
-/* Dark-mode (optional, minimal) */
 @media (prefers-color-scheme: dark){
   :root{ --bg:#0b1023; --text:#e5e7eb; --card:#111827; --shadow:rgba(0,0,0,0.4); --key-border:#334155; }
   .info-text{ color:#cbd5e1; }
