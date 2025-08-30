@@ -6,7 +6,6 @@
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
-// ⚠️ Note: secrets in client code are discoverable. Consider validating on Apps Script side
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
 const SHEET_SECRET   = "Banstead123";
 /******************************************************/
@@ -24,7 +23,7 @@ function queueSubmission(payload){
     console.warn("Not queuing bad payload (missing id/table):", payload);
     return;
   }
-  if (pendingSubmissions.some(p => p.id === payload.id)) return; // de-dupe
+  if (pendingSubmissions.some(p => p.id === payload.id)) return;
   pendingSubmissions.push(payload);
   saveQueue_();
 }
@@ -70,8 +69,8 @@ window.addEventListener("pagehide", () => {
 window.addEventListener("DOMContentLoaded", flushQueue);
 
 /******************** STATE ********************/
-let selectedBase = null;      // 2..12
-let mode = 'baseline';        // 'baseline' | 'tester'
+let selectedBase = null;
+let mode = 'baseline';
 let allQuestions = [];
 let current = 0;
 let score = 0;
@@ -130,7 +129,7 @@ function clearResultsUI(){
     const input = $('home-username');
     if (input) input.value = saved;
     const hello = $('hello-user');
-    if (hello) hello.textContent = `Hello, ${username}! Choose your times table:`;
+    if (hello) hello.textContent = `Hello, ${username}!`;
   }
 })();
 function setUsernameFromHome(){
@@ -150,7 +149,7 @@ function goHome(){
 function goMini(){
   setUsernameFromHome();
   const hello = $('hello-user');
-  if (hello) hello.textContent = username ? `Hello, ${username}! Choose your times table:` : `Choose your times table:`;
+  if (hello) hello.textContent = username ? `Hello, ${username}!` : "";
   clearResultsUI();
   hide(getHome()); hide(getNinja()); hide(getQuiz());
   show(getMini());
@@ -242,4 +241,212 @@ function buildKeypadIfNeeded(){
     a.addEventListener('keydown', (e) => {
       const ok = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
       if (ok.includes(e.key)) return;
-      if (!/^\\d$/.test(e.key)) e.preve
+      if (!/^\\d$/.test(e.key)) e.preventDefault();
+      if (/^\\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
+    });
+    hasAnswerKeydownHandler = true;
+  }
+  pad.style.display = "grid";
+}
+
+/******************** SELECTION ********************/
+function selectTable(base){
+  selectedBase = base;
+  TABLES.forEach(b => {
+    const el = $(`btn-${b}`);
+    if (el) el.classList.toggle('selected', b === base);
+  });
+}
+function selectMode(m){
+  mode = m;
+  const elB = $('mode-baseline');
+  const elT = $('mode-tester');
+  if (elB && elT){
+    elB.classList.toggle('selected', mode==='baseline');
+    elT.classList.toggle('selected', mode==='tester');
+  }
+}
+(function init(){
+  const elB = $('mode-baseline'), elT = $('mode-tester');
+  if (elB && elT){ elB.classList.add('selected'); elT.classList.remove('selected'); }
+})();
+document.addEventListener('DOMContentLoaded', buildTableButtons);
+
+/******************** QUESTION BUILDER ********************/
+function buildQuestions(base){
+  const perSet = (mode==='tester') ? 4 : 10;
+  const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${base} × ${i}`, a:base*i});
+  const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${i} × ${base}`, a:base*i});
+  const div =[]; for(let i=0;i<=12;i++) div.push({q:`${base*i} ÷ ${base}`, a:i});
+  const set1 = mul1.sort(()=>0.5-Math.random()).slice(0,perSet);
+  const set2 = mul2.sort(()=>0.5-Math.random()).slice(0,perSet);
+  const set3 = div .sort(()=>0.5-Math.random()).slice(0,perSet);
+  return [...set1, ...set2, ...set3];
+}
+
+/******************** QUIZ FLOW ********************/
+function startQuiz(){
+  if (!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
+
+  clearResultsUI();
+
+  if (!username){
+    const name = $('home-username')?.value.trim() || "";
+    if (!name){ alert("Please enter your name on the home page first."); return; }
+    username = name;
+    try { localStorage.setItem('ttt_username', username); } catch(_) {}
+  }
+
+  if (timer){ clearInterval(timer); timer = null; }
+  time = (mode==='tester') ? 30 : 90;
+  timerStarted = false; ended = false; score = 0; current = 0; userAnswers = [];
+  const t = getTimerEl(); const m = Math.floor(time/60), s = time%60;
+  if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
+
+  allQuestions = buildQuestions(selectedBase);
+
+  hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
+
+  const welcome = $("welcome-user");
+  if (welcome) welcome.textContent = `Practising ${selectedBase}×${mode==='tester'?' (Tester)':''}`;
+
+  const a = getAnswer();
+  if (a){
+    a.style.display = "inline-block"; a.disabled = false;
+    if (isIOSLike()){
+      a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
+      a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
+      a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
+      a.addEventListener('focus',      preventSoftKeyboard, true);
+    } else {
+      a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
+      a.removeEventListener('touchstart', preventSoftKeyboard);
+      a.removeEventListener('mousedown',  preventSoftKeyboard);
+      a.removeEventListener('focus',      preventSoftKeyboard, true);
+      a.onkeydown = (e) => { if (e.key === 'Enter') handleKey(e); };
+    }
+  }
+
+  const pad = getPadEl();
+  if (pad){
+    pad.innerHTML = '';
+    pad.style.display = 'grid';
+  }
+  buildKeypadIfNeeded();
+
+  showQuestion();
+}
+
+function showQuestion(){
+  const q = getQEl();
+  const a = getAnswer();
+  if (current < allQuestions.length && !ended){
+    if (q) q.textContent = allQuestions[current].q;
+    if (a){
+      a.value = ""; a.disabled = false; a.style.display = "inline-block";
+      if (isIOSLike()){
+        a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
+      } else {
+        a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
+        setTimeout(()=>a.focus(), 0);
+      }
+    }
+    const pad = getPadEl(); if (pad) pad.style.display = "grid";
+  } else {
+    endQuiz();
+  }
+}
+
+function handleKey(e){
+  if (e.key !== "Enter" || ended) return;
+  if (!timerStarted){ startTimer(); timerStarted = true; }
+
+  const a = getAnswer();
+  const raw = (a?.value || "").trim();
+  const userAns = raw === "" ? NaN : parseInt(raw, 10);
+  userAnswers.push(isNaN(userAns) ? "" : userAns);
+
+  if (!isNaN(userAns) && userAns === allQuestions[current].a) score++;
+  current++; showQuestion();
+}
+
+/******************** TIMER ********************/
+function startTimer(){
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    time--;
+    const t = getTimerEl(); const m = Math.floor(time/60), s = time%60;
+    if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
+    if (time <= 0) endQuiz();
+  }, 1000);
+}
+
+/******************** END & SUBMIT ********************/
+function endQuiz(){
+  if (ended) return; ended = true;
+  if (timer){ clearInterval(timer); timer = null; }
+
+  const q = getQEl(), a = getAnswer(), t = getTimerEl(), pad = getPadEl(), s = getScoreEl();
+  if (q) q.textContent = ""; if (a) a.style.display = "none"; if (pad) pad.style.display = "none"; if (t) t.style.display = "none";
+
+  if (a){
+    a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
+    a.removeEventListener('touchstart', preventSoftKeyboard);
+    a.removeEventListener('mousedown',  preventSoftKeyboard);
+    a.removeEventListener('focus',      preventSoftKeyboard, true);
+  }
+
+  const asked = Math.min(current, allQuestions.length);
+  const total = allQuestions.length;
+
+  if (s){
+    s.innerHTML = `${username}, you scored ${score}/${total} <br><br>
+      <button id="btn-show-answers" style="font-size:32px; padding:15px 40px;">Click to display answers</button>`;
+    const btn = document.getElementById('btn-show-answers');
+    if (btn) btn.onclick = showAnswers;
+  }
+
+  const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const modeMark = (mode==='tester') ? ' (tester)' : '';
+  const tableStr = `${selectedBase}x${modeMark}`.trim();
+  const uaSafe = String(navigator.userAgent || '').slice(0, 180);
+
+  const payload = {
+    id: submissionId,
+    secret: SHEET_SECRET,
+    table: tableStr,
+    name: username,
+    score, asked, total,
+    date: new Date().toISOString(),
+    device: uaSafe
+  };
+  if (!payload.id || !payload.table){ alert("Missing id or table — not sending"); return; }
+  queueSubmission(payload);
+  flushQueue();
+}
+
+/******************** ANSWER REVIEW ********************/
+function showAnswers(){
+  const s = getScoreEl(); if (!s) return;
+  let html = "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>";
+  allQuestions.forEach((q,i) => {
+    const userAns = (userAnswers[i] !== undefined && userAnswers[i] !== "") ? userAnswers[i] : "—";
+    const correct = (userAnswers[i] === q.a);
+    const color = correct ? "green" : "red";
+    html += `<div style="width: 30%; min-width:260px; margin:10px; font-size:24px; font-weight:bold; color:${color};">
+      ${q.q} = ${userAns}
+    </div>`;
+  });
+  html += "</div>";
+  s.innerHTML += html;
+}
+
+/******************** EXPORTS ********************/
+window.goHome = goHome;
+window.goMini = goMini;
+window.goNinja = goNinja;
+window.quitToMini = quitToMini;
+window.selectTable = selectTable;
+window.selectMode  = selectMode;
+window.startQuiz   = startQuiz;
+window.handleKey   = handleKey;
