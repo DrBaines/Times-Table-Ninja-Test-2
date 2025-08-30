@@ -1,5 +1,5 @@
 /* =========================================================
-   Times Tables Trainer - Script (improved Aug 2025)
+   Times Tables Trainer - Script (improved Aug 2025, no corrected answers in review)
    REMINDER: bump versions in index.html when you change files:
    <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
    <script src="./script.js?v=frontpage-8"></script>
@@ -7,7 +7,6 @@
 
 /******** Google Sheet endpoint (multi-device) ********/
 // ⚠️ Note: secrets in client code are discoverable. Consider validating on Apps Script side
-// (e.g., with a server-side property or origin check) and treating this value as a hint only.
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
 const SHEET_SECRET   = "Banstead123";
 /******************************************************/
@@ -25,7 +24,7 @@ function queueSubmission(payload){
     console.warn("Not queuing bad payload (missing id/table):", payload);
     return;
   }
-  if (pendingSubmissions.some(p => p.id === payload.id)) return; // de-dupe by id
+  if (pendingSubmissions.some(p => p.id === payload.id)) return; // de-dupe
   pendingSubmissions.push(payload);
   saveQueue_();
 }
@@ -47,7 +46,6 @@ async function flushQueue(){
         mode: "no-cors",
         body: new Blob([JSON.stringify(payload)], { type: "text/plain;charset=utf-8" })
       });
-      // With no-cors we can't inspect success; rely on endpoint being idempotent.
     } catch (e){
       remaining.push(payload);
       console.error("Flush failed, will retry:", e);
@@ -62,15 +60,13 @@ window.addEventListener("online", flushQueue);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") flushQueue();
 });
-// Try to flush before navigating away
 window.addEventListener("pagehide", () => {
   try {
     if (!pendingSubmissions.length) return;
     const payload = new Blob([JSON.stringify({ pending: pendingSubmissions })], { type: "text/plain;charset=utf-8" });
     navigator.sendBeacon?.(SHEET_ENDPOINT, payload);
-  } catch(_){}
+  } catch(_) {}
 });
-// Kick off a flush on load
 window.addEventListener("DOMContentLoaded", flushQueue);
 
 /******************** STATE ********************/
@@ -86,7 +82,6 @@ let ended = false;
 let userAnswers = [];
 let username = "";
 
-// Tables offered
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 const MAX_ANSWER_LEN = 4;
 
@@ -122,7 +117,6 @@ function preventSoftKeyboard(e){
 function show(el){ if(el) el.style.display = "block"; }
 function hide(el){ if(el) el.style.display = "none"; }
 
-/* NEW: clear previous results/answers UI */
 function clearResultsUI(){
   const s = getScoreEl();
   if (s) s.innerHTML = "";
@@ -139,12 +133,11 @@ function clearResultsUI(){
     if (hello) hello.textContent = `Hello, ${username}! Choose your times table:`;
   }
 })();
-
 function setUsernameFromHome(){
   const name = $('home-username')?.value.trim() || "";
   if (name){
     username = name;
-    try { localStorage.setItem('ttt_username', username); } catch(_){}
+    try { localStorage.setItem('ttt_username', username); } catch(_) {}
   }
 }
 
@@ -154,27 +147,20 @@ function goHome(){
   hide(getMini()); hide(getNinja()); hide(getQuiz());
   show(getHome());
 }
-
 function goMini(){
   setUsernameFromHome();
   const hello = $('hello-user');
   if (hello) hello.textContent = username ? `Hello, ${username}! Choose your times table:` : `Choose your times table:`;
-
   clearResultsUI();
-
   hide(getHome()); hide(getNinja()); hide(getQuiz());
   show(getMini());
 }
-
 function goNinja(){
   setUsernameFromHome();
-
   clearResultsUI();
-
   hide(getHome()); hide(getMini()); hide(getQuiz());
   show(getNinja());
 }
-
 function quitToMini(){
   if (timer){ clearInterval(timer); timer = null; }
   clearResultsUI();
@@ -198,15 +184,13 @@ function buildTableButtons(){
   });
 }
 
-/* Build the keypad if missing, and always force it visible */
 let hasAnswerKeydownHandler = false;
 function buildKeypadIfNeeded(){
   const pad = getPadEl();
   const a = getAnswer();
   if (!pad || !a) return;
 
-  pad.classList.add('calc-pad'); // ensure grid styling
-  // If already built, just show it
+  pad.classList.add('calc-pad');
   if (pad.childElementCount > 0){
     pad.style.display = "grid";
   } else {
@@ -216,7 +200,6 @@ function buildKeypadIfNeeded(){
       '4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter',
       '1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'
     };
-
     labels.forEach(label => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -247,7 +230,7 @@ function buildKeypadIfNeeded(){
         window.handleKey({ key:'Enter' });
         break;
       default:
-        if (/^\d$/.test(label)){
+        if (/^\\d$/.test(label)){
           if (a.value.length>=MAX_ANSWER_LEN) return;
           a.value += label;
           a.dispatchEvent(new Event('input',{bubbles:true}));
@@ -255,226 +238,8 @@ function buildKeypadIfNeeded(){
     }
   }
 
-  // Restrict hardware typing (attach once but persistent)
   if (!hasAnswerKeydownHandler){
     a.addEventListener('keydown', (e) => {
       const ok = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
       if (ok.includes(e.key)) return;
-      if (!/^\d$/.test(e.key)) e.preventDefault();
-      if (/^\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
-    });
-    hasAnswerKeydownHandler = true;
-  }
-
-  pad.style.display = "grid";
-}
-
-/******************** SELECTION ********************/
-function selectTable(base){
-  selectedBase = base;
-  TABLES.forEach(b => {
-    const el = $(`btn-${b}`);
-    if (el) el.classList.toggle('selected', b === base);
-  });
-}
-
-function selectMode(m){
-  mode = m;
-  const elB = $('mode-baseline');
-  const elT = $('mode-tester');
-  if (elB && elT){
-    elB.classList.toggle('selected', mode==='baseline');
-    elT.classList.toggle('selected', mode==='tester');
-  }
-}
-
-/* Init: highlight Baseline; build table buttons on DOM ready */
-(function init(){
-  const elB = $('mode-baseline'), elT = $('mode-tester');
-  if (elB && elT){ elB.classList.add('selected'); elT.classList.remove('selected'); }
-})();
-document.addEventListener('DOMContentLoaded', buildTableButtons);
-
-/******************** QUESTION BUILDER ********************/
-function buildQuestions(base){
-  const perSet = (mode==='tester') ? 4 : 10; // 12Q or 30Q total
-  const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${base} × ${i}`, a:base*i});
-  const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${i} × ${base}`, a:base*i});
-  const div =[]; for(let i=0;i<=12;i++) div.push({q:`${base*i} ÷ ${base}`, a:i});
-  const set1 = mul1.sort(()=>0.5-Math.random()).slice(0,perSet);
-  const set2 = mul2.sort(()=>0.5-Math.random()).slice(0,perSet);
-  const set3 = div .sort(()=>0.5-Math.random()).slice(0,perSet);
-  return [...set1, ...set2, ...set3];
-}
-
-/******************** QUIZ FLOW ********************/
-function startQuiz(){
-  if (!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
-
-  clearResultsUI();
-
-  if (!username){
-    const name = $('home-username')?.value.trim() || "";
-    if (!name){ alert("Please enter your name on the home page first."); return; }
-    username = name;
-    try { localStorage.setItem('ttt_username', username); } catch(_){}
-  }
-
-  if (timer){ clearInterval(timer); timer = null; }
-  time = (mode==='tester') ? 30 : 90;
-  timerStarted = false; ended = false; score = 0; current = 0; userAnswers = [];
-  const t = getTimerEl(); const m = Math.floor(time/60), s = time%60;
-  if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`; // remains hidden by CSS
-
-  allQuestions = buildQuestions(selectedBase);
-
-  hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
-
-  const welcome = $("welcome-user");
-  if (welcome) welcome.textContent = `Practising ${selectedBase}×${mode==='tester'?' (Tester)':''}`;
-
-  const a = getAnswer();
-  if (a){
-    a.style.display = "inline-block"; a.disabled = false;
-    if (isIOSLike()){
-      a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
-      a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
-      a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
-      a.addEventListener('focus',      preventSoftKeyboard, true);
-    } else {
-      a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
-      a.removeEventListener('touchstart', preventSoftKeyboard);
-      a.removeEventListener('mousedown',  preventSoftKeyboard);
-      a.removeEventListener('focus',      preventSoftKeyboard, true);
-      // Ensure pressing Enter on hardware triggers submission
-      a.onkeydown = (e) => { if (e.key === 'Enter') handleKey(e); };
-    }
-  }
-
-  // Build keypad AFTER the quiz screen is visible — force fresh build
-  const pad = getPadEl();
-  if (pad){
-    pad.innerHTML = '';
-    pad.style.display = 'grid';
-  }
-  buildKeypadIfNeeded();
-
-  showQuestion();
-}
-
-function showQuestion(){
-  const q = getQEl();
-  const a = getAnswer();
-  if (current < allQuestions.length && !ended){
-    if (q) q.textContent = allQuestions[current].q;
-    if (a){
-      a.value = ""; a.disabled = false; a.style.display = "inline-block";
-      if (isIOSLike()){
-        a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
-      } else {
-        a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
-        setTimeout(()=>a.focus(), 0);
-      }
-    }
-    const pad = getPadEl(); if (pad) pad.style.display = "grid";
-  } else {
-    endQuiz();
-  }
-}
-
-function handleKey(e){
-  if (e.key !== "Enter" || ended) return;
-  if (!timerStarted){ startTimer(); timerStarted = true; }
-
-  const a = getAnswer();
-  const raw = (a?.value || "").trim();
-  const userAns = raw === "" ? NaN : parseInt(raw, 10);
-  userAnswers.push(isNaN(userAns) ? "" : userAns);
-
-  if (!isNaN(userAns) && userAns === allQuestions[current].a) score++;
-  current++; showQuestion();
-}
-
-/******************** TIMER (hidden UI) ********************/
-function startTimer(){
-  if (timer) clearInterval(timer);
-  timer = setInterval(() => {
-    time--;
-    const t = getTimerEl(); const m = Math.floor(time/60), s = time%60;
-    if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`; // hidden by CSS
-    if (time <= 0) endQuiz();
-  }, 1000);
-}
-
-/******************** END & SUBMIT ********************/
-function endQuiz(){
-  if (ended) return; ended = true;
-  if (timer){ clearInterval(timer); timer = null; }
-
-  const q = getQEl(), a = getAnswer(), t = getTimerEl(), pad = getPadEl(), s = getScoreEl();
-  if (q) q.textContent = ""; if (a) a.style.display = "none"; if (pad) pad.style.display = "none"; if (t) t.style.display = "none";
-
-  if (a){
-    a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
-    a.removeEventListener('touchstart', preventSoftKeyboard);
-    a.removeEventListener('mousedown',  preventSoftKeyboard);
-    a.removeEventListener('focus',      preventSoftKeyboard, true);
-  }
-
-  const asked = Math.min(current, allQuestions.length);
-  const total = allQuestions.length;
-
-  if (s){
-    s.innerHTML = `${username}, you scored ${score}/${total} <br><br>
-      <button id="btn-show-answers" style="font-size:32px; padding:15px 40px;">Click to display answers</button>`;
-    const btn = document.getElementById('btn-show-answers');
-    if (btn) btn.onclick = showAnswers;
-  }
-
-  const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const modeMark = (mode==='tester') ? ' (tester)' : '';
-  const tableStr = `${selectedBase}x${modeMark}`.trim();
-
-  // Trim long UA to keep payload small
-  const uaSafe = String(navigator.userAgent || '').slice(0, 180);
-
-  const payload = {
-    id: submissionId,
-    secret: SHEET_SECRET,
-    table: tableStr,
-    name: username,
-    score, asked, total,
-    date: new Date().toISOString(),
-    device: uaSafe
-  };
-  if (!payload.id || !payload.table){ alert("Missing id or table — not sending"); return; }
-  queueSubmission(payload);
-  flushQueue();
-}
-
-/******************** ANSWER REVIEW ********************/
-function showAnswers(){
-  const s = getScoreEl(); if (!s) return;
-  let html = "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>";
-  allQuestions.forEach((q,i) => {
-    const userAns = (userAnswers[i] !== undefined && userAnswers[i] !== "") ? userAnswers[i] : "—";
-    const correct = (userAnswers[i] === q.a);
-    const color = correct ? "green" : "red";
-    html += `<div style="width: 30%; min-width:260px; margin:10px; font-size:24px; font-weight:bold;">
-      <div style="color:${color}">${q.q} = ${userAns}</div>
-      ${correct ? '' : `<div style="font-size:20px; color:#333">Correct: ${q.a}</div>`}
-    </div>`;
-  });
-  html += "</div>";
-  s.innerHTML += html;
-}
-
-/******************** EXPORTS (used by HTML) ********************/
-window.goHome = goHome;
-window.goMini = goMini;
-window.goNinja = goNinja;
-window.quitToMini = quitToMini;
-window.selectTable = selectTable;
-window.selectMode  = selectMode;
-window.startQuiz   = startQuiz;
-window.handleKey   = handleKey;
+      if (!/^\\d$/.test(e.key)) e.preve
