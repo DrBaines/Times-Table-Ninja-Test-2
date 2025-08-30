@@ -47,8 +47,13 @@ body {
 }
 
 /* Question & quiz info */
-.question { font-size: 100px; margin: 30px 0; }
-.answer-input { font-size: 80px; width: 280px; text-align: center; }
+.question { font-size: 100px; margin: 10px 0; } /* tighter spacing */
+.answer-input { 
+  font-size: 80px; 
+  width: 280px; 
+  text-align: center; 
+  margin-top: 8px;
+}
 .timer { font-size: 50px; margin-top: 30px; }
 .score { font-size: 40px; margin-top: 30px; }
 
@@ -56,50 +61,53 @@ body {
    Side-by-side layout
    =============================== */
 .quiz-row {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 24px;
-  flex-wrap: wrap;          /* Stack on small screens */
-  margin-top: 20px;
+  display: inline-grid;
+  grid-template-columns: minmax(320px, auto) auto; /* question | keypad */
+  column-gap: 16px;             /* tighter than before */
+  row-gap: 0;
+  align-items: start;
+  justify-content: center;      /* center the pair as one unit */
+  margin: 10px auto 0;
 }
 
 .question-col {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;        /* align closer to keypad */
+  text-align: right;
 }
 
 /* ===============================
    Calculator-style keypad
    =============================== */
-.answer-pad { margin: 16px auto 0; }
+.answer-pad { margin: 0; }
 
 /* Calculator frame */
 .calc-pad {
   display: grid;
   grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 12px;
-  max-width: 420px;
-  padding: 16px;
+  gap: 10px;                    /* tighter spacing between buttons */
+  max-width: 360px;             /* slightly narrower */
+  padding: 12px;
   border-radius: 18px;
   background: #1f1f1f;                 /* dark calculator body */
   box-shadow:
     0 8px 20px rgba(0,0,0,0.35),
     inset 0 2px 0 rgba(255,255,255,0.06);
+  justify-self: start;          /* nudge closer to the question */
 }
 
 /* Buttons */
 .calc-pad button {
-  font-size: 34px;
+  font-size: 30px;              /* slightly smaller */
   line-height: 1;
-  padding: 18px 0;
+  padding: 16px 0;              /* slightly smaller padding */
   border: none;
-  border-radius: 14px;
-  background: linear-gradient(#f7f7f7, #dcdcdc); /* subtle glossy look */
+  border-radius: 12px;          /* slightly less round */
+  background: linear-gradient(#f7f7f7, #dcdcdc);
   box-shadow:
-    0 6px 0 #b5b5b5,                       /* bottom edge */
-    0 2px 8px rgba(0,0,0,0.2);             /* drop shadow */
+    0 6px 0 #b5b5b5,
+    0 2px 8px rgba(0,0,0,0.2);
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
@@ -146,16 +154,26 @@ body {
     0 2px 8px rgba(0,0,0,0.3);
 }
 
-/* Larger keys on small screens */
-@media (max-width: 480px) {
+/* Responsive: stack nicely on small screens */
+@media (max-width: 700px) {
+  .quiz-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .question-col {
+    align-items: center;
+    text-align: center;
+  }
   .calc-pad {
-    grid-template-columns: repeat(3, 1fr);
+    justify-self: auto;
     max-width: 94vw;
-    gap: 14px;
-    padding: 16px;
+    gap: 12px;
+    padding: 14px;
   }
   .calc-pad button {
-    font-size: 38px;
-    padding: 22px 0;
+    font-size: 34px;
+    padding: 18px 0;
   }
 }
