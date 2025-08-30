@@ -1,11 +1,15 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Times Table Quiz (2× / 3× / 4×)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
-  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Favicon file in repo root -->
+  <link rel="icon" href="./favicon.ico">
+
+  <!-- Your stylesheet (make sure styles.css is next to index.html) -->
+  <link rel="stylesheet" href="./styles.css?v=2025-08-30-01" />
 </head>
 <body>
   <!-- Welcome / Login -->
@@ -42,6 +46,7 @@
     <div id="score" class="score"></div>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Load script last so functions are available for onclick handlers -->
+  <script src="./script.js?v=2025-08-30-01"></script>
 </body>
 </html>
