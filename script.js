@@ -1,3 +1,13 @@
+/* =========================================================
+   Times Tables Trainer - Stylesheet
+   REMINDER:
+   If you make changes here, bump the version number in
+   index.html so browsers fetch the latest file:
+   
+   <link rel="stylesheet" href="./styles.css?v=frontpage-4" />
+   <script src="./script.js?v=frontpage-4"></script>
+   ========================================================= */
+
 /******** Google Sheet endpoint (multi-device) ********/
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
 const SHEET_SECRET   = "Banstead123";
