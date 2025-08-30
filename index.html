@@ -5,7 +5,16 @@
   <title>Times Table Trainer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="./favicon.ico">
-  <link rel="stylesheet" href="./styles.css?v=2025-08-30-11" />
+
+  <!-- =========================================================
+       REMINDER: If you update styles.css or script.js,
+       bump the version numbers below so browsers fetch the latest.
+       Example:
+       <link rel="stylesheet" href="./styles.css?v=frontpage-5" />
+       <script src="./script.js?v=frontpage-5"></script>
+       ========================================================= -->
+  
+  <link rel="stylesheet" href="./styles.css?v=frontpage-4" />
 </head>
 <body>
 
@@ -77,7 +86,6 @@
       </div>
     </div>
 
-    <!-- Timer remains hidden via CSS but logic still runs -->
     <div id="timer" class="timer">Time left: 1:30</div>
     <div id="score" class="score"></div>
 
@@ -86,6 +94,7 @@
     </div>
   </div>
 
-  <script src="./script.js?v=2025-08-30-11"></script>
+  <!-- Load script last so functions are available for onclick handlers -->
+  <script src="./script.js?v=frontpage-4"></script>
 </body>
 </html>
