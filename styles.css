@@ -78,75 +78,66 @@ body {
   text-align: right;
 }
 
-/* ===== Calculator-style keypad ===== */
+
+/* ===============================
+   Calculator-style keypad (lighter style)
+   =============================== */
 .answer-pad { margin: 0; }
 
+/* Calculator frame (no heavy background) */
 .calc-pad {
   display: grid;
   grid-template-columns: repeat(3, minmax(72px, 1fr));
   gap: 10px;
   max-width: 360px;
   padding: 12px;
-  border-radius: 18px;
-  background: #1f1f1f;
-  box-shadow:
-    0 8px 20px rgba(0,0,0,0.35),
-    inset 0 2px 0 rgba(255,255,255,0.06);
+  border-radius: 12px;
+  background: transparent;   /* same as page background */
   justify-self: start;
 }
 
+/* Buttons */
 .calc-pad button {
-  font-size: 30px;
+  font-size: 34px;               /* a bit larger */
+  font-weight: bold;             /* bolder numbers */
   line-height: 1;
   padding: 16px 0;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(#f7f7f7, #dcdcdc);
-  box-shadow:
-    0 6px 0 #b5b5b5,
-    0 2px 8px rgba(0,0,0,0.2);
+  border: 2px solid #333;        /* outline buttons instead */
+  border-radius: 10px;
+  background: #fff;              /* white buttons */
+  color: #007bff;                /* bright blue for numbers */
+  box-shadow: none;              /* remove heavy shadow */
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
-  transition: transform 0.02s ease-in, box-shadow 0.02s ease-in, filter 0.15s;
+  transition: transform 0.05s ease-in, background 0.1s;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
 
+/* Pressed state */
 .calc-pad button:active {
-  transform: translateY(4px);
-  box-shadow:
-    0 2px 0 #b5b5b5,
-    0 1px 4px rgba(0,0,0,0.2);
+  transform: scale(0.96);
+  background: #f0f0f0;
 }
 
+/* Focus ring */
 .calc-pad button:focus {
   outline: 3px solid #7aa7ff;
   outline-offset: 2px;
 }
 
+/* Full-row key */
 .calc-pad .span-3 { grid-column: 1 / -1; }
 
-.calc-btn--enter {
-  background: linear-gradient(#4caf50, #2e7d32);
-  color: #fff;
-  box-shadow:
-    0 6px 0 #1b5e20,
-    0 2px 8px rgba(0,0,0,0.3);
-}
-.calc-btn--clear {
-  background: linear-gradient(#e53935, #c62828);
-  color: #fff;
-  box-shadow:
-    0 6px 0 #8e0000,
-    0 2px 8px rgba(0,0,0,0.3);
-}
+/* Special keys — darker text instead of white */
+.calc-btn--enter,
+.calc-btn--clear,
 .calc-btn--back {
-  background: linear-gradient(#546e7a, #37474f);
-  color: #fff;
-  box-shadow:
-    0 6px 0 #263238,
-    0 2px 8px rgba(0,0,0,0.3);
+  background: #fff;        /* keep white like numbers */
+  color: #444;             /* dark grey text */
+  border: 2px solid #333;  /* keep outlined */
+  font-weight: normal;     /* slightly lighter than numbers */
 }
 
 /* Responsive */
