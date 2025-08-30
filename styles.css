@@ -63,7 +63,7 @@ body {
 .quiz-row {
   display: inline-grid;
   grid-template-columns: minmax(320px, auto) auto; /* question | keypad */
-  column-gap: 16px;             /* tighter than before */
+  column-gap: 24px;             /* tighter than before */
   row-gap: 0;
   align-items: start;
   justify-content: center;      /* center the pair as one unit */
