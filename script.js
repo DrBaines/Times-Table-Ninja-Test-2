@@ -69,7 +69,7 @@ const qEl = document.getElementById("question");
 const aEl = document.getElementById("answer");
 const tEl = document.getElementById("timer");
 const sEl = document.getElementById("score");
-const padEl = document.getElementById("answer-pad"); //  container
+const padEl = document.getElementById("answer-pad"); // keypad container
 
 /******************** DEVICE DETECTION ********************/
 // Detect iOS/iPadOS (including iPad that reports as "Mac")
@@ -154,7 +154,7 @@ function startQuiz() {
   document.getElementById("login-container").style.display = "none";
   document.getElementById("quiz-container").style.display = "block";
 
-  // ✅ Updated: no "Good luck" — smaller text handled in CSS
+  // Updated: no "Good luck" — smaller text handled in CSS
   const modeLabel = (mode === 'tester') ? ' (Tester)' : '';
   document.getElementById("welcome-user").textContent =
     `Practising ${selectedBase}×${modeLabel}`;
@@ -319,7 +319,7 @@ window.handleKey   = handleKey;
 
   const MAX_LEN = 4;
 
-  // Label order doesn't matter because we place by grid area.
+  // Labels can be in any order; placement is controlled by area classes.
   const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
   const posClassMap = {
     '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back',
@@ -327,19 +327,21 @@ window.handleKey   = handleKey;
     '1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'
   };
 
-  // Build buttons
   labels.forEach((label) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = label;
     btn.setAttribute('aria-label', label === '⌫' ? 'Backspace' : label);
 
+    // Appearance
     if (label === 'Enter') btn.classList.add('calc-btn--enter');
     if (label === 'Clear') btn.classList.add('calc-btn--clear');
     if (label === '⌫')     btn.classList.add('calc-btn--back');
 
-    btn.classList.add(posClassMap[label]);           // place into grid area
+    // Position (must match CSS grid areas)
+    btn.classList.add(posClassMap[label]);
 
+    // Single event path to avoid double digits
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -373,7 +375,7 @@ window.handleKey   = handleKey;
     }
   }
 
-  // Keep hardware typing sane
+  // Keep hardware typing sane on laptops/desktops
   aEl.addEventListener('keydown', (e) => {
     const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
     if (allowed.includes(e.key)) return;
@@ -383,5 +385,3 @@ window.handleKey   = handleKey;
     }
   });
 })();
-
-
