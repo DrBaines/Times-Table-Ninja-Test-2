@@ -1,5 +1,8 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-27)
+   Times Tables Trainer - Script (frontpage-28)
+   - Purple/Red/Black belts: fully mixed random (×, × reversed, ÷)
+   - Red/Black 100Q; Purple 50Q
+   - 5-minute timer; 5-column answers; Quit to Home
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -78,6 +81,13 @@ function preventSoftKeyboard(e){ const a=getAnswer(); if(a && a.readOnly){ e.pre
 function show(el){ if(el) el.style.display="block"; }
 function hide(el){ if(el) el.style.display="none"; }
 function clearResultsUI(){ const s=getScoreEl(); if(s) s.innerHTML=""; }
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 /******************** NAME PERSISTENCE ********************/
 (function bootstrapName(){
@@ -167,7 +177,7 @@ function selectTable(base){
 }
 
 /******************** QUESTION BUILDERS ********************/
-/* Build 30 in 3 patterns (10 each) */
+/* 30 in 3 patterns (10 each) for single table baseline */
 function block30_single(base){
   const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${i} × ${base}`, a:base*i});
   const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${base} × ${i}`, a:base*i});
@@ -177,7 +187,7 @@ function block30_single(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
   return [...set1, ...set2, ...set3];
 }
-/* Build 30 in 3 patterns for mixed bases */
+/* 30 in 3 patterns for mixed baseline */
 function block30_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
@@ -187,7 +197,7 @@ function block30_mixed(bases){
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a3.push({q:`${b*i} ÷ ${b}`, a:i}); }
   return [...a1, ...a2, ...a3];
 }
-/* Extra 20 mixed */
+/* Extra 20 mixed for 50 total */
 function extra20_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
@@ -201,24 +211,19 @@ function extra20_mixed(bases){
   }
   return out;
 }
-/* NEW: generic builder for any total (e.g., 100) with ~equal split across 3 patterns */
+/* Generic builder for any total (returns SHUFFLED fully mixed list) */
 function buildMixedCustom(bases, total){
-  const perType = Math.floor(total / 3);
-  const remainder = total - perType*3;
-  const counts = [perType, perType, perType];
-  for (let i=0;i<remainder;i++) counts[i]++;
-
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
   const out = [];
-  // type 0: i × b
-  for (let k=0;k<counts[0];k++){ const b=pick(), i=r(); out.push({ q:`${i} × ${b}`, a:i*b }); }
-  // type 1: b × i
-  for (let k=0;k<counts[1];k++){ const b=pick(), i=r(); out.push({ q:`${b} × ${i}`, a:i*b }); }
-  // type 2: (b*i) ÷ b
-  for (let k=0;k<counts[2];k++){ const b=pick(), i=r(); out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
-
-  return out;
+  for (let k=0;k<total;k++){
+    const t = Math.floor(Math.random()*3); // 0: i×b, 1: b×i, 2: (b*i)÷b
+    const b = pick(); const i = r();
+    if (t === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
+    else if (t === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
+    else { out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
+  }
+  return shuffle(out);
 }
 
 /* Public builders: 50 total for minis/many belts */
@@ -232,7 +237,7 @@ function startQuiz(){
   preflightAndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
 }
 
-/* Existing belts (50 Q) */
+/* Existing 50Q belts */
 function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([3,4]),       `White Ninja Belt`, QUIZ_TIME); }
 function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([4,6]),       `Yellow Ninja Belt`, QUIZ_TIME); }
 function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `Orange Ninja Belt`, QUIZ_TIME); }
@@ -240,10 +245,10 @@ function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  pre
 function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,8]),       `Blue Ninja Belt`, QUIZ_TIME); }
 function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),       `Pink Ninja Belt`, QUIZ_TIME); }
 
-/* NEW belts */
-function startPurpleBelt(){ quizType='ninja'; ninjaName='Purple Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6,7,8,9,10]), `Purple Ninja Belt`, QUIZ_TIME); }
-function startRedBelt(){    quizType='ninja'; ninjaName='Red Ninja Belt';    preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 100),        `Red Ninja Belt`, QUIZ_TIME); }
-function startBlackBelt(){  quizType='ninja'; ninjaName='Black Ninja Belt';  preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10,11,12], 100),   `Black Ninja Belt`, QUIZ_TIME); }
+/* NEW belts (fully mixed) */
+function startPurpleBelt(){ quizType='ninja'; ninjaName='Purple Ninja Belt'; preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 50),  `Purple Ninja Belt`, QUIZ_TIME); }
+function startRedBelt(){    quizType='ninja'; ninjaName='Red Ninja Belt';    preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 100), `Red Ninja Belt`, QUIZ_TIME); }
+function startBlackBelt(){  quizType='ninja'; ninjaName='Black Ninja Belt';  preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10,11,12], 100), `Black Ninja Belt`, QUIZ_TIME); }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
