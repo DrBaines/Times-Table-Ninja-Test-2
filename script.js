@@ -517,8 +517,11 @@ window.startBronzeBelt = startBronzeBelt;
 window.startSilverBelt = startSilverBelt;
 
 /* ---------- init ---------- */
-(function init(){
+// Init
+function initApp(){
   const saved = localStorage.getItem(NAME_KEY);
-  if (saved && $("home-username")) $("home-username").value = saved;
+  if (saved && document.getElementById("home-username")) document.getElementById("home-username").value = saved;
   setScreen("home-screen");
-})();
+}
+window.addEventListener("DOMContentLoaded", initApp);
+
