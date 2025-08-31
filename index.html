@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#1e3a8a" />
   <link rel="icon" href="./favicon.ico" />
   <!-- BUMPED -->
-  <link rel="stylesheet" href="./styles.css?v=frontpage-18" />
+  <link rel="stylesheet" href="./styles.css?v=frontpage-19" />
 </head>
 <body>
   <noscript>
@@ -49,14 +49,13 @@
     <h2 class="subtitle" id="mini-title" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
     <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices"></div>
 
-    <!-- Tester removed; baseline only -->
     <div class="choice-buttons">
       <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz (30 Q / 90s)</button>
       <button class="big-button" onclick="goHome()">Back</button>
     </div>
   </section>
 
-  <!-- ===== NINJA BELT (White: 3× & 4×) ===== -->
+  <!-- ===== NINJA BELTS ===== -->
   <section id="ninja-screen" class="center" style="display:none;" aria-labelledby="ninja-title">
     <h2 class="subtitle" id="ninja-title">Ninja Belt</h2>
     <div class="belt-grid">
@@ -66,7 +65,43 @@
         <div class="belt-meta">30 Q • 90s</div>
         <button class="big-button primary" onclick="startWhiteBelt()">Start White Belt</button>
       </div>
+
+      <div class="belt-card">
+        <div class="belt-name">Yellow Ninja Belt</div>
+        <div class="belt-desc">Mixed: 4× &amp; 6×</div>
+        <div class="belt-meta">30 Q • 90s</div>
+        <button class="big-button primary" onclick="startYellowBelt()">Start Yellow Belt</button>
+      </div>
+
+      <div class="belt-card">
+        <div class="belt-name">Orange Ninja Belt</div>
+        <div class="belt-desc">Mixed: 2×, 3×, 4×, 5×, 6×</div>
+        <div class="belt-meta">30 Q • 90s</div>
+        <button class="big-button primary" onclick="startOrangeBelt()">Start Orange Belt</button>
+      </div>
+
+      <div class="belt-card">
+        <div class="belt-name">Green Ninja Belt</div>
+        <div class="belt-desc">Mixed: 4× &amp; 8×</div>
+        <div class="belt-meta">30 Q • 90s</div>
+        <button class="big-button primary" onclick="startGreenBelt()">Start Green Belt</button>
+      </div>
+
+      <div class="belt-card">
+        <div class="belt-name">Blue Ninja Belt</div>
+        <div class="belt-desc">Mixed: 7× &amp; 8×</div>
+        <div class="belt-meta">30 Q • 90s</div>
+        <button class="big-button primary" onclick="startBlueBelt()">Start Blue Belt</button>
+      </div>
+
+      <div class="belt-card">
+        <div class="belt-name">Pink Ninja Belt</div>
+        <div class="belt-desc">Mixed: 7× &amp; 9×</div>
+        <div class="belt-meta">30 Q • 90s</div>
+        <button class="big-button primary" onclick="startPinkBelt()">Start Pink Belt</button>
+      </div>
     </div>
+
     <div class="choice-buttons"><button class="big-button" onclick="goHome()">Back</button></div>
   </section>
 
@@ -87,7 +122,6 @@
           autocomplete="off"
           aria-label="Your answer"
         />
-        <!-- Echo for iOS -->
         <div id="answer-echo" class="answer-echo" style="display:none;"></div>
       </div>
 
@@ -100,11 +134,12 @@
     <div id="score" class="score" role="region" aria-label="Score and answers"></div>
 
     <div class="choice-buttons">
-      <button class="big-button" onclick="quitToMini()">Quit</button>
+      <!-- CHANGED: quitFromQuiz decides where to go (Home after end, Mini during quiz) -->
+      <button class="big-button" onclick="quitFromQuiz()">Quit</button>
     </div>
   </section>
 
   <!-- BUMPED -->
-  <script src="./script.js?v=frontpage-18"></script>
+  <script src="./script.js?v=frontpage-19"></script>
 </body>
 </html>
