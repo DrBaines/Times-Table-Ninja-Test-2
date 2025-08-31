@@ -1,8 +1,7 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-15)
-   - Hardened desktop typing: digits + Enter always work
-   - Stricter iOS detection; never readonly on desktop
-   - Global key routing via addEventListener (not onkeydown)
+   Times Tables Trainer - Script (frontpage-16)
+   - Windows/desktop typing: hardened routing for 0–9, Backspace, Delete, Enter
+   - Never sets readOnly on Windows/desktop
    - Mini = baseline only (30Q/90s), White Ninja Belt (3&4) = 30Q/90s
    ========================================================= */
 
@@ -47,8 +46,7 @@ window.addEventListener("DOMContentLoaded", flushQueue);
 let selectedBase = null;         // for Mini: 2..12
 let quizType = 'single';         // 'single' | 'ninja'
 let ninjaName = '';              // 'White Ninja Belt'
-const NINJA_QUESTIONS = 30;      // Baseline: 30
-const NINJA_TIME = 90;           // Baseline time: 90s
+const NINJA_TIME = 90;           // 90s
 
 let allQuestions = [];
 let current = 0;
@@ -63,7 +61,7 @@ let username = "";
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 const MAX_ANSWER_LEN = 4;
 
-/******************** FRESH DOM GETTERS ********************/
+/******************** DOM GETTERS ********************/
 const $ = (id) => document.getElementById(id);
 const getQEl     = () => $("question");
 const getAnswer  = () => $("answer");
@@ -76,21 +74,22 @@ const getNinja = () => $("ninja-screen");
 const getQuiz  = () => $("quiz-container");
 
 /******************** DEVICE DETECTION ********************/
-// Stricter iOS/iPadOS detection to avoid desktop false positives
-function isIOSStrict(){
+// Treat as iOS only if classic iOS UA or iPad-as-Mac *and* touch-capable
+function isIOSLikeStrict(){
   const ua = navigator.userAgent || "";
   const iOSUA = /iPad|iPhone|iPod/.test(ua);
   const iPadAsMac = (navigator.platform === "MacIntel" || /Mac/.test(ua)) && navigator.maxTouchPoints > 1;
-  // Only treat as iOS if *touch-capable* and either classic iOS UA or iPad-as-Mac
   return (iOSUA || iPadAsMac) && navigator.maxTouchPoints > 0;
 }
-const isiOS = isIOSStrict();
+// Explicit desktop detection: Windows with no touch => definitely desktop
+const isWindowsDesktop = /Windows/i.test(navigator.userAgent || "") && (navigator.maxTouchPoints || 0) === 0;
+const isiOS = isIOSLikeStrict() && !isWindowsDesktop;
 
 function preventSoftKeyboard(e){
   const a = getAnswer(); if (a && a.readOnly){ e.preventDefault(); a.blur(); }
 }
 
-/******************** SMALL UI HELPERS ********************/
+/******************** HELPERS ********************/
 function show(el){ if(el) el.style.display = "block"; }
 function hide(el){ if(el) el.style.display = "none"; }
 function clearResultsUI(){ const s = getScoreEl(); if (s) s.innerHTML = ""; }
@@ -129,7 +128,7 @@ function buildTableButtons(){
   });
 }
 
-/* Answer Echo (for iOS readOnly visual refresh issues) */
+/* Echo used only for iOS keypad-only path */
 function ensureAnswerEcho(){
   let echo = $('answer-echo');
   if (!echo){
@@ -143,7 +142,7 @@ function updateAnswerEcho(){
   if (isiOS){ echo.style.display = "block"; echo.textContent = (a.value || ""); } else { echo.style.display = "none"; }
 }
 
-/* Build the keypad if missing, and always force it visible */
+/* Build keypad once */
 function buildKeypadIfNeeded(){
   const pad = getPadEl(); const a = getAnswer(); if (!pad || !a) return;
   pad.classList.add('calc-pad');
@@ -186,12 +185,9 @@ function selectTable(base){
   selectedBase = base;
   TABLES.forEach(b => { const el = $(`btn-${b}`); if (el) el.classList.toggle('selected', b === base); });
 }
-(function init(){
-  document.addEventListener('DOMContentLoaded', buildTableButtons);
-})();
+(function init(){ document.addEventListener('DOMContentLoaded', buildTableButtons); })();
 
 /******************** QUESTION BUILDERS ********************/
-/* Mini baseline: always 30 (10 mul1, 10 mul2, 10 div) */
 function buildQuestionsSingle(base){
   const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${i} × ${base}`, a:base*i});
   const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${base} × ${i}`, a:base*i});
@@ -201,37 +197,26 @@ function buildQuestionsSingle(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
   return [...set1, ...set2, ...set3];
 }
-
-/* Exact Baseline-style 30Q builder for mixed 3 & 4 */
 function buildQuestionsMixedBaseline34(){
   const bases = [3,4];
   const pickBase = () => bases[Math.floor(Math.random()*bases.length)];
   const randI = () => Math.floor(Math.random()*13); // 0..12
-
-  const first10 = [];  // * × 3 or 4
-  for (let k=0;k<10;k++){ const b = pickBase(); const i = randI(); first10.push({ q: `${i} × ${b}`, a: i*b }); }
-
-  const next10 = [];   // 3 or 4 × *
-  for (let k=0;k<10;k++){ const b = pickBase(); const i = randI(); next10.push({ q: `${b} × ${i}`, a: i*b }); }
-
-  const last10 = [];   // * ÷ 3 or 4
-  for (let k=0;k<10;k++){ const b = pickBase(); const i = randI(); last10.push({ q: `${b*i} ÷ ${b}`, a: i }); }
-
+  const first10 = [];  for (let k=0;k<10;k++){ const b=pickBase(), i=randI(); first10.push({ q:`${i} × ${b}`, a:i*b }); }
+  const next10  = [];  for (let k=0;k<10;k++){ const b=pickBase(), i=randI(); next10.push({  q:`${b} × ${i}`, a:i*b }); }
+  const last10  = [];  for (let k=0;k<10;k++){ const b=pickBase(), i=randI(); last10.push({  q:`${b*i} ÷ ${b}`, a:i }); }
   return [...first10, ...next10, ...last10];
 }
 
 /******************** QUIZ FLOW ********************/
 let desktopKeyHandler = null;
 
-function startQuiz(){ // Mini (baseline)
+function startQuiz(){ // Mini baseline
   quizType = 'single';
   if (!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
   preflightAndStart(() => buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, 90);
 }
-
-function startWhiteBelt(){ // Ninja: White (3 & 4 mixed, baseline style)
-  quizType = 'ninja';
-  ninjaName = 'White Ninja Belt';
+function startWhiteBelt(){ // Ninja: White (3 & 4)
+  quizType = 'ninja'; ninjaName = 'White Ninja Belt';
   preflightAndStart(buildQuestionsMixedBaseline34, `${ninjaName} — 3× & 4× (30Qs / 90s)`, NINJA_TIME);
 }
 
@@ -257,22 +242,20 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
     a.style.display = "inline-block"; a.disabled = false;
 
     if (!isiOS){
-      // Desktop/laptop: enable typing + sanitize digits
+      // Desktop/laptop: fully enable typing
       a.readOnly = false;
       a.removeAttribute('tabindex');
       a.setAttribute('inputmode','numeric');
       a.addEventListener('input', sanitizeDigits, { once:false });
       a.addEventListener('keydown', submitOnEnter, { once:false });
 
-      // Keep focus glued to the input during quiz
+      // Keep focus and route keys globally in case focus shifts
       setTimeout(()=>a.focus(), 0);
       document.addEventListener('pointerdown', refocusAnswerIfQuiz, { passive:true });
-
-      // Global key routing that works even if focus shifts
       desktopKeyHandler = (e) => routeKeysToAnswer(e);
-      window.addEventListener('keydown', desktopKeyHandler);
+      document.addEventListener('keydown', desktopKeyHandler);  // <— document-level
     } else {
-      // iOS-like path: keypad only (no soft keyboard)
+      // iOS path: keypad only (no soft keyboard)
       a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
       a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
       a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
@@ -304,29 +287,17 @@ function showQuestion(){
   } else { endQuiz(); }
 }
 
-/******************** INPUT HELPERS (desktop) ********************/
-function sanitizeDigits(){
-  const a = getAnswer(); if (!a) return;
-  a.value = a.value.replace(/\D+/g, '').slice(0, MAX_ANSWER_LEN);
-}
-function submitOnEnter(e){
-  if (e.key === 'Enter'){ e.preventDefault(); handleKey({ key:'Enter' }); }
-}
-function refocusAnswerIfQuiz(){
-  const a = getAnswer(); const quizVisible = getQuiz() && getQuiz().style.display !== "none";
-  if (quizVisible && a && !isiOS){ setTimeout(()=>a.focus(), 0); }
-}
+/******************** INPUT (desktop) ********************/
+function sanitizeDigits(){ const a = getAnswer(); if (!a) return; a.value = a.value.replace(/\D+/g, '').slice(0, MAX_ANSWER_LEN); }
+function submitOnEnter(e){ if (e.key === 'Enter'){ e.preventDefault(); handleKey({ key:'Enter' }); } }
+function refocusAnswerIfQuiz(){ const a = getAnswer(); const vis = getQuiz() && getQuiz().style.display !== "none"; if (vis && a && !isiOS){ setTimeout(()=>a.focus(), 0); } }
 function routeKeysToAnswer(e){
-  const a = getAnswer(); const quizVisible = getQuiz() && getQuiz().style.display !== "none";
-  if (!quizVisible || !a || ended) return;
-
-  // If focus is in a button or outside input, still route digits/Enter/Backspace/Delete
+  const a = getAnswer(); const vis = getQuiz() && getQuiz().style.display !== "none";
+  if (!vis || !a || ended) return;
   const k = e.key;
   if (/^\d$/.test(k)){
     e.preventDefault();
-    if (a.value.length < MAX_ANSWER_LEN){
-      a.value += k; a.dispatchEvent(new Event('input', { bubbles:true }));
-    }
+    if (a.value.length < MAX_ANSWER_LEN){ a.value += k; a.dispatchEvent(new Event('input', { bubbles:true })); }
     try { a.setSelectionRange(a.value.length, a.value.length); } catch(_) {}
   } else if (k === 'Backspace' || k === 'Delete'){
     e.preventDefault();
@@ -342,16 +313,13 @@ function routeKeysToAnswer(e){
 function handleKey(e){
   if (e.key !== "Enter" || ended) return;
   if (!timerStarted){ startTimer(); timerStarted = true; }
-
   const a = getAnswer();
   const raw = (a?.value || "").trim();
   const userAns = raw === "" ? NaN : parseInt(raw, 10);
   userAnswers.push(isNaN(userAns) ? "" : userAns);
-
   if (!isNaN(userAns) && userAns === allQuestions[current].a) score++;
   current++; showQuestion();
 }
-
 function startTimer(){
   if (timer) clearInterval(timer);
   timer = setInterval(() => {
@@ -367,9 +335,8 @@ function endQuiz(){
   if (ended) return; ended = true;
   if (timer){ clearInterval(timer); timer = null; }
 
-  // Remove desktop handlers
   if (!isiOS && desktopKeyHandler){
-    window.removeEventListener('keydown', desktopKeyHandler);
+    document.removeEventListener('keydown', desktopKeyHandler);
     document.removeEventListener('pointerdown', refocusAnswerIfQuiz);
     desktopKeyHandler = null;
   }
@@ -420,7 +387,7 @@ function showAnswers(){
   s.innerHTML += html;
 }
 
-/******************** EXPORTS (used by HTML) ********************/
+/******************** EXPORTS ********************/
 window.goHome = goHome;
 window.goMini = goMini;
 window.goNinja = goNinja;
