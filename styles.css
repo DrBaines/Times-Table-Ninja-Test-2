@@ -1,315 +1,60 @@
-/* =========================================================
-   Times Tables Trainer - Stylesheet (frontpage-36)
-   ========================================================= */
+/* Times Tables Trainer - Stylesheet (frontpage-44, fixed answer-pad) */
 
-/* Base layout */
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  background: #eef;
+body { margin:0; font-family:sans-serif; background:#eef; }
+.center { text-align:center; margin-top:80px; }
+.title { font-size:56px; margin:0 0 20px; }
+.subtitle { font-size:48px; margin:0 0 20px; }
+
+.big-input { font-size:44px; padding:18px; width:520px; max-width:92vw; text-align:center; }
+.big-button { font-size:28px; padding:16px 26px; cursor:pointer; border:2px solid #222; border-radius:10px; background:#fff; }
+.big-button.primary { background:#4caf50; color:#fff; border-color:#4caf50; }
+.big-button.secondary { background:#ffb300; color:#222; border-color:#ffb300; }
+
+.question { font-size:120px; margin:0 0 30px; }
+.answer-input { font-size:100px; width:340px; text-align:center; }
+.timer { display:none!important; }
+.score { font-size:40px; margin-top:30px; }
+
+#quiz-container { padding:20px; border-radius:16px; padding-bottom:260px; }
+.quiz-row { display:inline-grid; grid-template-columns:minmax(380px,auto) auto; column-gap:60px; align-items:start; justify-content:center; margin:60px auto 0; }
+.question-col { display:flex; flex-direction:column; align-items:center; }
+
+/* Fixed keypad styles (answer-pad) */
+#answer-pad {
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:max(16px, env(safe-area-inset-bottom));
+  z-index:1000;
+  width:min(420px,92vw);
+  display:none; pointer-events:none;
 }
-.center { text-align: center; margin-top: 80px; }
-.title { font-size: 56px; margin: 0 0 20px; }
-.subtitle { font-size: 48px; margin: 0 0 20px; }
-.info-text { font-size: 22px; margin: 10px 0 20px; color: #444; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; clip: rect(0 0 0 0); overflow: hidden; }
-
-.choice-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin: 12px 0 30px;
-  flex-wrap: wrap;
+body[data-screen="quiz-container"] #answer-pad { display:block; pointer-events:auto; }
+#answer-pad .pad {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-auto-rows:64px;
+  gap:8px;
+  padding:8px;
+  background:rgba(240,240,240,0.96);
+  border-radius:12px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.12);
 }
-.choice {
-  font-size: 42px;
-  padding: 18px 36px;
-  border: 3px solid #333;
-  background: white;
-  border-radius: 12px;
-  cursor: pointer;
+#answer-pad .pad-btn {
+  font-size:24px; font-weight:700;
+  border:none; border-radius:10px;
+  background:#eef5ff; color:#1d4ed8;
+  touch-action:manipulation;
 }
-.choice.selected {
-  background: #4caf50;
-  color: white;
-  border-color: #4caf50;
+#answer-pad .pad-enter,
+#answer-pad .pad-back,
+#answer-pad .pad-clear {
+  background:#e7e7e7; color:#222;
 }
+#answer-pad .pad-wide { grid-column:span 2; }
+#answer-pad, #answer-pad * { -webkit-user-select:none; user-select:none; }
 
-.stack-mobile { gap: 20px; }
-
-.name-row { margin: 10px 0 20px; }
-
-.big-input {
-  font-size: 44px;
-  padding: 18px;
-  width: 520px;
-  max-width: 92vw;
-  text-align: center;
-}
-
-.big-button {
-  font-size: 28px;
-  padding: 16px 26px;
-  cursor: pointer;
-  border: 2px solid #222;
-  border-radius: 10px;
-  background: #fff;
-}
-.big-button.primary { background: #4caf50; color: #fff; border-color: #4caf50; }
-.big-button.secondary { background: #ffb300; color: #222; border-color: #ffb300; }
-
-/* Question & quiz info */
-.question { font-size: 120px; margin: 0 0 30px; }
-.answer-input {
-  font-size: 100px;
-  width: 340px;
-  text-align: center;
-  margin-top: 0;
-}
-.timer { font-size: 50px; margin-top: 30px; }
-.score { font-size: 40px; margin-top: 30px; }
-
-/* Hide the timer UI but keep logic running */
-.timer { display: none !important; }
-
-/* Quiz container chrome for belt backgrounds */
-#quiz-container { padding: 20px; border-radius: 16px; }
-
-/* ===== Side-by-side layout (question | keypad) ===== */
-.quiz-row {
-  display: inline-grid;
-  grid-template-columns: minmax(380px, auto) auto;
-  column-gap: 60px;
-  align-items: start;
-  justify-content: center;
-  margin: 60px auto 0;
-}
-
-.question-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-/* ===== Numpad layout (fixed-size grid, tall Enter, wide 0) ===== */
-.answer-pad { margin: 0; }
-
-.calc-pad {
-  display: grid;
-  grid-template-columns: repeat(4, 70px);
-  grid-auto-rows: 70px;
-  grid-template-areas:
-    "seven eight nine back"
-    "four  five  six  enter"
-    "one   two   three enter"
-    "zero  zero  clear enter";
-  gap: 14px;
-  width: max-content;
-  padding: 8px 0;
-  background: transparent;
-  border-radius: 12px;
-}
-
-/* Base button look */
-.calc-pad button {
-  border: 2px solid #333;
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  user-select: none;
-  touch-action: manipulation;
-  transition: transform 0.05s ease-in, background 0.1s;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Numbers: big, bold, bright blue */
-.calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-  font-size: 34px;
-  font-weight: bold;
-  color: #007bff;
-}
-
-/* Special keys: smaller, dark grey text */
-.calc-btn--enter,
-.calc-btn--clear,
-.calc-btn--back {
-  font-size: 20px;
-  font-weight: normal;
-  color: #444;
-}
-
-/* Pressed + focus */
-.calc-pad button:active { transform: scale(0.96); background: #f0f0f0; }
-.calc-pad button:focus  { outline: 3px solid #7aa7ff; outline-offset: 2px; }
-
-/* Grid areas */
-.key-7     { grid-area: seven; }
-.key-8     { grid-area: eight; }
-.key-9     { grid-area: nine;  }
-.key-back  { grid-area: back;  }
-.key-4     { grid-area: four;  }
-.key-5     { grid-area: five;  }
-.key-6     { grid-area: six;   }
-.key-enter { grid-area: enter; }
-.key-1     { grid-area: one;   }
-.key-2     { grid-area: two;   }
-.key-3     { grid-area: three; }
-.key-0     { grid-area: zero;  }
-.key-clear { grid-area: clear; }
-
-/* Smaller screens */
-@media (max-width: 700px) {
-  .quiz-row {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 40px;
-  }
-  .subtitle { font-size: 36px; }
-  .question { font-size: 80px; }
-  .answer-input { font-size: 72px; width: 280px; }
-  .calc-pad {
-    grid-template-columns: repeat(4, 56px);
-    grid-auto-rows: 56px;
-    gap: 10px;
-  }
-  .calc-pad button:not(.calc-btn--enter):not(.calc-btn--clear):not(.calc-btn--back) {
-    font-size: 28px;
-  }
-  .calc-btn--enter, .calc-btn--clear, .calc-btn--back { font-size: 18px; }
-}
-
-/* Smaller welcome line */
-#welcome-user { font-size: 28px; margin-bottom: 12px; font-weight: normal; color: #333; }
-#hello-user { font-size: 28px; font-weight: normal; color: #333; }
-
-/* ===== Ninja Belt Grid ===== */
-.belt-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
-  max-width: 1100px;
-  margin: 0 auto 30px;
-  padding: 0 16px;
-}
-.belt-card {
-  border: 2px solid rgba(0,0,0,0.2);
-  border-radius: 16px;
-  padding: 18px 16px 20px;
-  text-align: left;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
-}
-.belt-name {
-  font-size: 24px;
-  font-weight: 800;
-  margin-bottom: 6px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  display: inline-block;
-}
-.belt-desc { font-size: 18px; margin-bottom: 6px; }
-.belt-meta { font-size: 16px; opacity: 0.9; margin-bottom: 12px; }
-
-/* Colour themes */
-.belt-card.white { background: #ffffff; border: none; }
-.belt-card.yellow { background: #fff59d; }
-.belt-card.orange { background: #ffcc80; }
-.belt-card.green  { background: #a5d6a7; }
-.belt-card.blue   { background: #90caf9; }
-.belt-card.pink   { background: #f8bbd0; }
-.belt-card.purple { background: #d1c4e9; }
-.belt-card.red    { background: #ef9a9a; }
-.belt-card.black  { background: #e0e0e0; }
-.belt-card.bronze { background: #e7c9a6; }
-.belt-card.silver { background: #d9d9d9; }
-
-.belt-card .belt-name { color: #111; }
-.belt-card.yellow .belt-name { color: #111; }
-.belt-card.orange .belt-name { color: #111; }
-.belt-card.green  .belt-name { color: #0b3d0b; }
-.belt-card.blue   .belt-name { color: #0a2a5a; }
-.belt-card.pink   .belt-name { color: #5a0a35; }
-.belt-card.purple .belt-name { color: #3a2a6a; }
-.belt-card.red    .belt-name { color: #5a0a0a; }
-.belt-card.black  .belt-name { color: #111; }
-.belt-card.bronze .belt-name { color: #5c4428; }
-.belt-card.silver .belt-name { color: #222; }
-
-/* === Fixed keypad (frontpage-39) === */
-#quiz-container {
-  /* reserve space so the fixed keypad doesn't overlap content */
-  padding-bottom: 260px; /* adjust if you tweak keypad height */
-}
-
-/* fixed position wrapper for keypad */
-#keypad {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: max(16px, env(safe-area-inset-bottom));
-  z-index: 1000;
-  /* ensure it doesn't stretch oddly */
-  width: min(420px, 92vw);
-}
-
-/* grid layout inside keypad */
-#keypad .pad {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 64px;
-  gap: 8px;
-  padding: 8px;
-  box-sizing: border-box;
-  background: rgba(240,240,240,0.96);
-  border-radius: 12px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
-  backdrop-filter: saturate(1.2) blur(2px);
-}
-
-/* buttons */
-#keypad .pad-btn {
-  font-size: 24px;
-  font-weight: 700;
-  border: none;
-  border-radius: 10px;
-  background: #eef5ff;     /* numbers: big/blue feel */
-  color: #1d4ed8;
-  touch-action: manipulation;
-}
-#keypad .pad-enter,
-#keypad .pad-back,
-#keypad .pad-clear {
-  background: #e7e7e7;     /* grey for Enter/Clear/Back */
-  color: #222;
-}
-
-/* tall Enter on the right column */
-#keypad .pad-enter {
-  grid-row: span 1;
-}
-
-/* wide 0 on bottom row (spans two columns) */
-#keypad .pad-wide {
-  grid-column: span 2;
-}
-
-/* make sure buttons are large enough on small screens */
-#keypad .pad-btn {
-  min-width: 64px;
-  min-height: 64px;
-}
-
-/* prevent text selection while tapping */
-#keypad, #keypad * {
-  -webkit-user-select: none;
-  user-select: none;
-}
-/* Ensure keypad is OFF by default; only ON during quiz via body[data-screen] */
-#keypad { display: none; pointer-events: none; }
-body[data-screen="quiz-container"] #keypad { display: block; pointer-events: auto; }
+/* Belt grid */
+.belt-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; max-width:1100px; margin:0 auto 30px; padding:0 16px; }
+.belt-card { border:2px solid rgba(0,0,0,0.2); border-radius:16px; padding:18px; text-align:left; box-shadow:0 3px 10px rgba(0,0,0,0.06); }
+.belt-name { font-size:24px; font-weight:800; margin-bottom:6px; }
+.belt-desc { font-size:18px; margin-bottom:6px; }
+.belt-meta { font-size:16px; margin-bottom:12px; }
