@@ -1,9 +1,9 @@
-/* Times Tables Trainer — script.js (frontpage-42)
-   Fixes:
-   - Keypad is created ONLY while on the quiz screen and fully removed on exit.
-   - No overlay can exist on Home/Mini/Ninja screens.
-   - Keeps: +2 digit headroom, hidden 5-min timer, offline queue, belt rules.
-   - Adds: optional Home button wiring by ID (#btn-mini, #btn-ninja) as a fallback.
+/* Times Tables Trainer — script.js (frontpage-43)
+   - Aligns to your HTML IDs: home-screen, mini-screen, ninja-screen, quiz-container
+   - Uses home-username (name input), hello-user (mini greeting), answer-pad (keypad host)
+   - Keypad is created only during quiz, destroyed on exit
+   - Dynamic answer length with +2 digits headroom
+   - Hidden 5-min timer, belt rules, offline queue intact
 */
 
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
@@ -31,11 +31,11 @@ let desktopKeyHandler = null;
 let submitLockedUntil = 0; // anti double-submit
 
 /* ---------- utils ---------- */
-function $(id){ return document.getElementById(id); }
-function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+const $ = (id)=>document.getElementById(id);
+const clamp = (n,min,max)=>Math.max(min, Math.min(max, n));
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
-function cryptoRandom(){ return String(Date.now())+"-"+Math.floor(Math.random()*1e9); }
+const randInt=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+const cryptoRandom=()=>String(Date.now())+"-"+Math.floor(Math.random()*1e9);
 function hashDJB2(s){ let h=5381; for(let i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i); h|=0;} return h>>>0; }
 
 /* ---------- dynamic max length (with +2 headroom) ---------- */
@@ -60,7 +60,7 @@ function syncAnswerMaxLen(){
 /* ---------- navigation ---------- */
 function setScreen(id){
   ["home-screen","mini-screen","ninja-screen","quiz-container"].forEach(v=>{
-    const el = document.getElementById(v);
+    const el = $(v);
     if (el) el.style.display = (v===id ? "block" : "none");
   });
   document.body.setAttribute("data-screen", id);
@@ -69,19 +69,19 @@ function setScreen(id){
 function goHome(){ setScreen("home-screen"); }
 function goMini(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
-  const nameInput = $("name-input");
+  const nameInput = $("home-username");
   if (nameInput){
     const val = nameInput.value.trim();
     if (val) { userName = val; localStorage.setItem(NAME_KEY, userName); }
   }
-  const hello = $("mini-hello");
+  const hello = $("hello-user");
   if (hello) hello.textContent = userName ? `Hello, ${userName}!` : "Hello!";
   buildTableButtons();
   setScreen("mini-screen");
 }
 function goNinja(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
-  const nameInput = $("name-input");
+  const nameInput = $("home-username");
   if (nameInput){
     const val = nameInput.value.trim();
     if (val) { userName = val; localStorage.setItem(NAME_KEY, userName); }
@@ -97,7 +97,7 @@ function quitFromQuiz(){
 /* ---------- mini tests ---------- */
 let selectedBase = 2;
 function buildTableButtons(){
-  const wrap = $("mini-buttons");
+  const wrap = $("table-choices");
   if (!wrap) return;
   let html = "";
   for (let b=2; b<=12; b++){
@@ -113,22 +113,17 @@ function startQuiz(){
 }
 
 /* ---------- belts ---------- */
-function startWhiteBelt(){
-  modeLabel = "White Belt";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  const qs = buildBeltMixStructured([3,4], 50);
-  preflightAndStart(qs, { theme: "white" });
-}
-function startYellowBelt(){ modeLabel="Yellow Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,6],50), {theme:"yellow"}); }
-function startOrangeBelt(){ modeLabel="Orange Belt (2x – 6x)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([2,3,4,5,6],50), {theme:"orange"}); }
-function startGreenBelt(){ modeLabel="Green Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,8],50), {theme:"green"}); }
-function startBlueBelt(){ modeLabel="Blue Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,8],50), {theme:"blue"}); }
-function startPinkBelt(){ modeLabel="Pink Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,9],50), {theme:"pink"}); }
-function startPurpleBelt(){ modeLabel="Purple Belt (2×–10×)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(50,{min:2,max:10}), {theme:"purple"}); }
-function startRedBelt(){ modeLabel="Red Belt (2×–10×, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:10}), {theme:"red"}); }
-function startBlackBelt(){ modeLabel="Black Belt (2×–12×, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:12}), {theme:"black"}); }
-function startBronzeBelt(){ modeLabel="Bronze Belt (2×–12× + blanks, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBronzeQuestions(100), {theme:"bronze"}); }
-function startSilverBelt(){ modeLabel="Silver Belt (2×–12×, powers of 10, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildSilverQuestions(100), {theme:"silver"}); }
+function startWhiteBelt(){ modeLabel="White Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBeltMixStructured([3,4],50),{theme:"white"}); }
+function startYellowBelt(){ modeLabel="Yellow Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,6],50),{theme:"yellow"}); }
+function startOrangeBelt(){ modeLabel="Orange Belt (2x – 6x)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([2,3,4,5,6],50),{theme:"orange"}); }
+function startGreenBelt(){ modeLabel="Green Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,8],50),{theme:"green"}); }
+function startBlueBelt(){ modeLabel="Blue Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,8],50),{theme:"blue"}); }
+function startPinkBelt(){ modeLabel="Pink Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,9],50),{theme:"pink"}); }
+function startPurpleBelt(){ modeLabel="Purple Belt (2×–10×)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(50,{min:2,max:10}),{theme:"purple"}); }
+function startRedBelt(){ modeLabel="Red Belt (2×–10×, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:10}),{theme:"red"}); }
+function startBlackBelt(){ modeLabel="Black Belt (2×–12×, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:12}),{theme:"black"}); }
+function startBronzeBelt(){ modeLabel="Bronze Belt (2×–12× + blanks, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBronzeQuestions(100),{theme:"bronze"}); }
+function startSilverBelt(){ modeLabel="Silver Belt (2×–12×, powers of 10, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildSilverQuestions(100),{theme:"silver"}); }
 
 /* ---------- question builders ---------- */
 function buildMiniQuestions(base, total){
@@ -209,16 +204,19 @@ function buildSilverQuestions(total){
   const bases = [2,3,4,5,6,7,8,9,10,11,12];
   const pow = [0,1];
   const out = [];
-  for (let n=0;n<total;n++){
+  for (let n=0; n<total; n++){
     const a = bases[Math.floor(Math.random()*bases.length)];
     const b = bases[Math.floor(Math.random()*bases.length)];
     const k = pow[Math.floor(Math.random()*pow.length)];
     const m = pow[Math.floor(Math.random()*pow.length)];
-    const A = a * Math.pow(10, k);
-    const B = b * Math.pow(10, m);
+    const A = a * Math.pow(10, k);  // expanded
+    const B = b * Math.pow(10, m);  // expanded
     const c = A * B;
-    if (Math.random() < 0.5) out.push({ q:`${A} × ${B}`, a:c });
-    else out.push({ q:`${c} ÷ ${A}`, a:B });
+    if (Math.random() < 0.5){
+      out.push({ q: `${A} × ${B}`, a: c });
+    } else {
+      out.push({ q: `${c} ÷ ${A}`, a: B });
+    }
   }
   return shuffle(out);
 }
@@ -255,7 +253,7 @@ function showQuestion(){
     syncAnswerMaxLen();
     try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
   }
-  const p = $("progress");
+  const p = $("progress"); // optional
   if (p) p.textContent = `${currentIndex+1} / ${allQuestions.length}`;
 }
 function handleKey(val){
@@ -289,6 +287,7 @@ function safeSubmit(){
 
   const a = $("answer");
   if (!a || ended) return;
+
   const valStr = a.value.trim();
   userAnswers[currentIndex] = (valStr === "") ? "" : Number(valStr);
 
@@ -334,8 +333,8 @@ function endQuiz(){
       <div class="result-line">
         <strong>${modeLabel}:</strong> ${correct} / ${allQuestions.length}
       </div>
-      <button class="btn" onclick="showAnswers()">Show answers</button>
-      <button class="btn" onclick="quitFromQuiz()">Quit</button>
+      <button class="big-button" onclick="showAnswers()">Show answers</button>
+      <button class="big-button" onclick="quitFromQuiz()">Quit</button>
     `;
   }
   try{
@@ -375,7 +374,7 @@ function showAnswers(){
 
 /* ---------- keypad: create only during quiz ---------- */
 function createKeypad(){
-  const host = $("keypad");
+  const host = $("answer-pad");
   if (!host) return;
   host.innerHTML = `
     <div class="pad">
@@ -411,11 +410,11 @@ function createKeypad(){
 }
 
 function destroyKeypad(){
-  const host = $("keypad");
+  const host = $("answer-pad");
   if (!host) return;
   host.innerHTML = "";
-  host.style.display = "none";
-  host.style.pointerEvents = "none";
+  host.style.display = "";
+  host.style.pointerEvents = "";
 }
 
 /* ---------- keyboard ---------- */
@@ -520,18 +519,6 @@ window.startSilverBelt = startSilverBelt;
 /* ---------- init ---------- */
 (function init(){
   const saved = localStorage.getItem(NAME_KEY);
-  if (saved && $("name-input")) $("name-input").value = saved;
-  setScreen("home");
-
-  // Fallback wiring if your HTML uses IDs instead of inline onclicks
-  const miniBtn = $("btn-mini");
-  const ninjaBtn = $("btn-ninja");
-  if (miniBtn && !miniBtn._wired){
-    miniBtn._wired = true;
-    miniBtn.addEventListener("click", (e)=>{ e.preventDefault(); goMini(); });
-  }
-  if (ninjaBtn && !ninjaBtn._wired){
-    ninjaBtn._wired = true;
-    ninjaBtn.addEventListener("click", (e)=>{ e.preventDefault(); goNinja(); });
-  }
+  if (saved && $("home-username")) $("home-username").value = saved;
+  setScreen("home-screen");
 })();
