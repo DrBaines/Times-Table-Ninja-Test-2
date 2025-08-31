@@ -1,5 +1,5 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet (frontpage-27)
+   Times Tables Trainer - Stylesheet (frontpage-31)
    ========================================================= */
 
 /* Base layout */
@@ -216,9 +216,9 @@ body {
 .belt-desc { font-size: 18px; margin-bottom: 6px; }
 .belt-meta { font-size: 16px; opacity: 0.9; margin-bottom: 12px; }
 
-/* Colour themes: card background matches belt-name background */
+/* Colour themes */
 .belt-card.white { background: #ffffff; }
-.belt-card.white .belt-name { background: #ffffff; color: #111;  }
+.belt-card.white .belt-name { background: #ffffff; color: #111; }
 
 .belt-card.yellow { background: #fff59d; }
 .belt-card.yellow .belt-name { background: #fff59d; color: #111; }
@@ -235,12 +235,15 @@ body {
 .belt-card.pink { background: #f8bbd0; }
 .belt-card.pink .belt-name { background: #f8bbd0; color: #5a0a35; }
 
-/* NEW belts */
 .belt-card.purple { background: #d1c4e9; }
 .belt-card.purple .belt-name { background: #d1c4e9; color: #3a2a6a; }
 
 .belt-card.red { background: #ef9a9a; }
 .belt-card.red .belt-name { background: #ef9a9a; color: #5a0a0a; }
 
-.belt-card.black { background: #e0e0e0; }            /* pale grey card */
+.belt-card.black { background: #e0e0e0; }
 .belt-card.black .belt-name { background: #e0e0e0; color: #111; }
+
+/* NEW: Bronze */
+.belt-card.bronze { background: #f0e0c6; }            /* pale bronze */
+.belt-card.bronze .belt-name { background: #f0e0c6; color: #6b4e21; }
