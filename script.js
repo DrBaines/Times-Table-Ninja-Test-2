@@ -384,14 +384,25 @@ function endQuiz(){
 /******************** ANSWER REVIEW ********************/
 function showAnswers(){
   const s=getScoreEl(); if(!s) return;
-  let html="<div style='display:flex; flex-wrap:wrap; justify-content:center;'>";
+  let html = `
+    <div style="
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      justify-items: start;
+      max-width: 1200px;
+      margin: 20px auto;
+    ">
+  `;
   allQuestions.forEach((q,i)=>{
     const userAns = (userAnswers[i]!==undefined && userAnswers[i]!=="") ? userAnswers[i] : "—";
     const correct = (userAnswers[i]===q.a);
     const color = correct ? "green" : "red";
-    html += `<div style="width:30%; min-width:260px; margin:10px; font-size:24px; font-weight:bold; color:${color};">
-      ${q.q} = ${userAns}
-    </div>`;
+    html += `
+      <div style="font-size:22px; font-weight:bold; color:${color}; text-align:left;">
+        ${i+1}. ${q.q} = ${userAns}
+      </div>
+    `;
   });
   html += "</div>";
   s.innerHTML += html;
