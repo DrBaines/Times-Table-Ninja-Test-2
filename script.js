@@ -1,7 +1,8 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-12)
-   - White Ninja Belt: mixed 3× & 4× in Baseline format (30Q / 90s)
-   - Ensures 30 questions (not 12) and proper cache-bust
+   Times Tables Trainer - Script (frontpage-13)
+   - Removed Tester mode/UI (baseline only: 30Q / 90s)
+   - Fixed hardware keyboard typing (desktop/laptop)
+   - White Ninja Belt (3× & 4×): 30Q / 90s baseline format
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -43,10 +44,8 @@ window.addEventListener("DOMContentLoaded", flushQueue);
 
 /******************** STATE ********************/
 let selectedBase = null;         // for Mini: 2..12
-let mode = 'baseline';           // 'baseline' | 'tester' (Mini only)
 let quizType = 'single';         // 'single' | 'ninja'
 let ninjaName = '';              // e.g., 'White Ninja Belt'
-let ninjaBases = [];             // e.g., [3,4]
 const NINJA_QUESTIONS = 30;      // Baseline: 30
 const NINJA_TIME = 90;           // Baseline time
 
@@ -76,9 +75,15 @@ const getNinja = () => $("ninja-screen");
 const getQuiz  = () => $("quiz-container");
 
 /******************** DEVICE DETECTION ********************/
-function isIOSLike(){ const ua = navigator.userAgent || ''; const iOS = /iPad|iPhone|iPod/.test(ua);
-  const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1; return iOS || iPadAsMac; }
-function preventSoftKeyboard(e){ const a = getAnswer(); if (a && a.readOnly){ e.preventDefault(); a.blur(); }}
+function isIOSLike(){
+  const ua = navigator.userAgent || '';
+  const iOS = /iPad|iPhone|iPod/.test(ua);
+  const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return iOS || iPadAsMac;
+}
+function preventSoftKeyboard(e){
+  const a = getAnswer(); if (a && a.readOnly){ e.preventDefault(); a.blur(); }
+}
 
 /******************** SMALL UI HELPERS ********************/
 function show(el){ if(el) el.style.display = "block"; }
@@ -120,24 +125,32 @@ function buildTableButtons(){
 }
 
 /* Answer Echo (for iOS readOnly visual refresh issues) */
-function ensureAnswerEcho(){ let echo = $('answer-echo'); if (!echo){ echo = document.createElement('div'); echo.id='answer-echo'; echo.className='answer-echo';
-  const a=getAnswer(); if (a && a.parentElement){ a.parentElement.insertBefore(echo, a.nextSibling); } } return echo; }
+function ensureAnswerEcho(){
+  let echo = $('answer-echo');
+  if (!echo){
+    echo = document.createElement('div'); echo.id='answer-echo'; echo.className='answer-echo';
+    const a=getAnswer(); if (a && a.parentElement){ a.parentElement.insertBefore(echo, a.nextSibling); }
+  }
+  return echo;
+}
 function updateAnswerEcho(){
   const a = getAnswer(); if (!a) return; const echo = ensureAnswerEcho(); const useEcho = isIOSLike();
   if (useEcho){ echo.style.display = "block"; echo.textContent = (a.value || ""); } else { echo.style.display = "none"; }
 }
 
 /* Build the keypad if missing, and always force it visible */
-let hasAnswerKeydownHandler = false;
 function buildKeypadIfNeeded(){
   const pad = getPadEl(); const a = getAnswer(); if (!pad || !a) return;
   pad.classList.add('calc-pad');
   if (pad.childElementCount === 0){
     const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
     const pos = { '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back','4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter','1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear' };
-    labels.forEach(label => { const btn = document.createElement('button'); btn.type='button'; btn.textContent=label;
+    labels.forEach(label => {
+      const btn = document.createElement('button'); btn.type='button'; btn.textContent=label;
       btn.setAttribute('aria-label', label==='⌫'?'Backspace':label);
-      if (label==='Enter') btn.classList.add('calc-btn--enter'); if (label==='Clear') btn.classList.add('calc-btn--clear'); if (label==='⌫') btn.classList.add('calc-btn--back');
+      if (label==='Enter') btn.classList.add('calc-btn--enter');
+      if (label==='Clear') btn.classList.add('calc-btn--clear');
+      if (label==='⌫')     btn.classList.add('calc-btn--back');
       btn.classList.add(pos[label]);
       btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); e.stopPropagation(); if (isIOSLike()) getAnswer()?.blur(); handlePadPress(label); });
       pad.appendChild(btn);
@@ -152,21 +165,14 @@ function buildKeypadIfNeeded(){
       case '⌫': a.value=a.value.slice(0,-1); a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); break;
       case 'Enter': if (!timerStarted){ startTimer(); timerStarted = true; } window.handleKey({ key:'Enter' }); updateAnswerEcho(); break;
       default:
-        if (/^\d$/.test(label)){ if (a.value.length>=MAX_ANSWER_LEN) return; a.value += label;
+        if (/^\d$/.test(label)){
+          if (a.value.length>=MAX_ANSWER_LEN) return;
+          a.value += label;
           try { a.setSelectionRange(a.value.length, a.value.length); } catch(_) {}
-          a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); }
+          a.dispatchEvent(new Event('input',{bubbles:true}));
+          updateAnswerEcho();
+        }
     }
-  }
-
-  if (!hasAnswerKeydownHandler){
-    const a = getAnswer();
-    a.addEventListener('keydown', (e) => {
-      const ok = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
-      if (ok.includes(e.key)) return;
-      if (!/^\d$/.test(e.key)) e.preventDefault();
-      if (/^\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
-    });
-    hasAnswerKeydownHandler = true;
   }
 }
 
@@ -175,27 +181,23 @@ function selectTable(base){
   selectedBase = base;
   TABLES.forEach(b => { const el = $(`btn-${b}`); if (el) el.classList.toggle('selected', b === base); });
 }
-function selectMode(m){
-  mode = m;
-  const elB = $('mode-baseline'); const elT = $('mode-tester');
-  if (elB && elT){ elB.classList.toggle('selected', mode==='baseline'); elT.classList.toggle('selected', mode==='tester'); }
-}
-(function init(){ const elB=$('mode-baseline'), elT=$('mode-tester'); if (elB && elT){ elB.classList.add('selected'); elT.classList.remove('selected'); } })();
-document.addEventListener('DOMContentLoaded', buildTableButtons);
+(function init(){
+  document.addEventListener('DOMContentLoaded', buildTableButtons);
+})();
 
 /******************** QUESTION BUILDERS ********************/
+/* Mini baseline: always 30 (10 mul1, 10 mul2, 10 div) */
 function buildQuestionsSingle(base){
-  const perSet = (mode==='tester') ? 4 : 10; // 12 or 30 total
-  const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${base} × ${i}`, a:base*i});
-  const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${i} × ${base}`, a:base*i});
+  const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${i} × ${base}`, a:base*i});
+  const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${base} × ${i}`, a:base*i});
   const div =[]; for(let i=0;i<=12;i++) div.push({q:`${base*i} ÷ ${base}`, a:i});
-  const set1 = mul1.sort(()=>0.5-Math.random()).slice(0,perSet);
-  const set2 = mul2.sort(()=>0.5-Math.random()).slice(0,perSet);
-  const set3 = div .sort(()=>0.5-Math.random()).slice(0,perSet);
+  const set1 = mul1.sort(()=>0.5-Math.random()).slice(0,10);
+  const set2 = mul2.sort(()=>0.5-Math.random()).slice(0,10);
+  const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
   return [...set1, ...set2, ...set3];
 }
 
-/* Exact Baseline-style 30Q builder for 3&4 mixed */
+/* Exact Baseline-style 30Q builder for mixed 3 & 4 */
 function buildQuestionsMixedBaseline34(){
   const bases = [3,4];
   const pickBase = () => bases[Math.floor(Math.random()*bases.length)];
@@ -214,16 +216,15 @@ function buildQuestionsMixedBaseline34(){
 }
 
 /******************** QUIZ FLOW ********************/
-function startQuiz(){ // Mini
+function startQuiz(){ // Mini (baseline)
   quizType = 'single';
   if (!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
-  preflightAndStart(() => buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×${mode==='tester'?' (Tester)':''}`, (mode==='tester')?30:90);
+  preflightAndStart(() => buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, 90);
 }
 
 function startWhiteBelt(){ // Ninja: White (3 & 4 mixed, baseline style)
   quizType = 'ninja';
   ninjaName = 'White Ninja Belt';
-  ninjaBases = [3,4];
   preflightAndStart(buildQuestionsMixedBaseline34, `${ninjaName} — 3× & 4× (30Qs / 90s)`, NINJA_TIME);
 }
 
@@ -245,23 +246,31 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
 
   const a = getAnswer();
   if (a){
+    a.value = "";
     a.style.display = "inline-block"; a.disabled = false;
-    if (isIOSLike()){
+
+    // Desktop/laptop: enable normal typing & focus
+    if (!isIOSLike()){
+      a.readOnly = false;
+      a.setAttribute('inputmode','numeric');
+      a.removeAttribute('tabindex');
+      a.onkeydown = (e) => { if (e.key === 'Enter') handleKey(e); };
+      a.oninput = () => {
+        // allow only digits, cap length
+        a.value = a.value.replace(/\D+/g, '').slice(0, MAX_ANSWER_LEN);
+      };
+      const echo = $('answer-echo'); if (echo) echo.style.display = "none";
+      setTimeout(()=>a.focus(), 0);
+    } else {
+      // iOS-like path: keep readOnly to suppress soft keyboard, show echo
       a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
       a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
       a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
       a.addEventListener('focus',      preventSoftKeyboard, true);
       updateAnswerEcho();
-    } else {
-      a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
-      a.removeEventListener('touchstart', preventSoftKeyboard);
-      a.removeEventListener('mousedown',  preventSoftKeyboard);
-      a.removeEventListener('focus',      preventSoftKeyboard, true);
-      const echo = $('answer-echo'); if (echo) echo.style.display = "none";
-      a.onkeydown = (e) => { if (e.key === 'Enter') handleKey(e); };
-      setTimeout(()=>a.focus(), 0);
     }
   }
+
   const pad = getPadEl(); if (pad){ pad.innerHTML = ''; pad.style.display = 'grid'; }
   buildKeypadIfNeeded();
   showQuestion();
@@ -273,8 +282,14 @@ function showQuestion(){
     if (q) q.textContent = allQuestions[current].q;
     if (a){
       a.value = ""; a.disabled = false; a.style.display = "inline-block";
-      if (isIOSLike()){ a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur(); updateAnswerEcho(); }
-      else { a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex'); setTimeout(()=>a.focus(), 0); const echo=$('answer-echo'); if (echo) echo.style.display="none"; }
+      if (!isIOSLike()){
+        a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
+        const echo=$('answer-echo'); if (echo) echo.style.display="none";
+        setTimeout(()=>a.focus(), 0);
+      } else {
+        a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
+        updateAnswerEcho();
+      }
     }
     const pad = getPadEl(); if (pad) pad.style.display = "grid";
   } else { endQuiz(); }
@@ -330,13 +345,7 @@ function endQuiz(){
   }
 
   const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  let tableStr = "";
-  if (quizType === 'single'){
-    const modeMark = (mode==='tester') ? ' (tester)' : '';
-    tableStr = `${selectedBase}x${modeMark}`.trim();
-  } else {
-    tableStr = `${ninjaName} (3&4)`;
-  }
+  const tableStr = (quizType === 'single') ? `${selectedBase}x` : `White Ninja Belt (3&4)`;
   const uaSafe = String(navigator.userAgent || '').slice(0, 180);
 
   const payload = { id: submissionId, secret: SHEET_SECRET, table: tableStr, name: username,
@@ -367,7 +376,6 @@ window.goMini = goMini;
 window.goNinja = goNinja;
 window.quitToMini = quitToMini;
 window.selectTable = selectTable;
-window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
 window.startWhiteBelt = startWhiteBelt;
