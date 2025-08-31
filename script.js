@@ -1,7 +1,6 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-17)
-   - FORCE DESKTOP TYPING: bullet-proof keyboard on Windows/macOS
-   - Global key routing: 0–9, Backspace, Delete, Enter
+   Times Tables Trainer - Script (frontpage-18)
+   - Fix: no more skipped questions (single Enter handler + submit lock)
    - Mini = baseline only (30Q/90s), White Ninja Belt (3&4) = 30Q/90s
    ========================================================= */
 
@@ -39,7 +38,7 @@ window.addEventListener("DOMContentLoaded", flushQueue);
 let selectedBase = null;         // Mini: 2..12
 let quizType = 'single';         // 'single' | 'ninja'
 let ninjaName = '';              // 'White Ninja Belt'
-const QUIZ_TIME = 90;            // 90s for all
+const QUIZ_TIME = 90;            // seconds
 const MAX_ANSWER_LEN = 4;
 
 let allQuestions = [];
@@ -51,6 +50,9 @@ let timerStarted = false;
 let ended = false;
 let userAnswers = [];
 let username = "";
+
+/* submit lock to prevent double-advance */
+let submitLock = false;
 
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 
@@ -66,11 +68,8 @@ const getMini    = () => $("mini-screen");
 const getNinja   = () => $("ninja-screen");
 const getQuiz    = () => $("quiz-container");
 
-/******************** PLATFORM HANDLING ********************/
-/* HARD OVERRIDE: we force desktop typing by default */
+/******************** PLATFORM (force desktop typing unless set otherwise) ********************/
 const FORCE_DESKTOP = true;
-
-/* If you ever need iPad-only keypad mode, set FORCE_DESKTOP=false */
 function isIOSLike(){
   if (FORCE_DESKTOP) return false;
   const ua = navigator.userAgent || '';
@@ -79,15 +78,12 @@ function isIOSLike(){
   return (iOSUA || iPadAsMac) && navigator.maxTouchPoints > 0;
 }
 const isiOS = isIOSLike();
-
-function preventSoftKeyboard(e){
-  const a = getAnswer(); if (a && a.readOnly){ e.preventDefault(); a.blur(); }
-}
+function preventSoftKeyboard(e){ const a=getAnswer(); if(a && a.readOnly){ e.preventDefault(); a.blur(); }}
 
 /******************** HELPERS ********************/
-function show(el){ if(el) el.style.display = "block"; }
-function hide(el){ if(el) el.style.display = "none"; }
-function clearResultsUI(){ const s = getScoreEl(); if (s) s.innerHTML = ""; }
+function show(el){ if(el) el.style.display="block"; }
+function hide(el){ if(el) el.style.display="none"; }
+function clearResultsUI(){ const s=getScoreEl(); if(s) s.innerHTML=""; }
 
 /******************** NAME PERSISTENCE ********************/
 (function bootstrapName(){
@@ -151,7 +147,7 @@ function handlePadPress(label){
   switch(label){
     case 'Clear': a.value=''; a.dispatchEvent(new Event('input',{bubbles:true})); break;
     case '⌫': a.value=a.value.slice(0,-1); a.dispatchEvent(new Event('input',{bubbles:true})); break;
-    case 'Enter': if(!timerStarted){ startTimer(); timerStarted=true; } handleKey({key:'Enter'}); break;
+    case 'Enter': safeSubmit(); break;
     default:
       if (/^\d$/.test(label)){
         if (a.value.length>=MAX_ANSWER_LEN) return;
@@ -217,17 +213,15 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
   const welcome=$("welcome-user"); if(welcome) welcome.textContent=welcomeText;
 
-  // Prepare answer input (ALWAYS typable on desktop)
   const a=getAnswer();
   if(a){
     a.value=""; a.disabled=false; a.style.display="inline-block";
     if(!isiOS){
       a.readOnly=false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
       a.addEventListener('input', ()=>{ a.value = a.value.replace(/\D+/g,'').slice(0,MAX_ANSWER_LEN); });
-      a.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleKey({key:'Enter'}); }});
       setTimeout(()=>a.focus(),0);
 
-      // Global routing so keys work even if focus wanders
+      // Global routing (single source of truth) — no input keydown handler
       desktopKeyHandler = (e)=>{
         const quizVisible = getQuiz() && getQuiz().style.display !== "none";
         if(!quizVisible || ended) return;
@@ -243,7 +237,7 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
           a.dispatchEvent(new Event('input',{bubbles:true}));
         } else if (e.key==='Enter'){
           e.preventDefault();
-          handleKey({key:'Enter'});
+          safeSubmit();
         }
       };
       document.addEventListener('keydown', desktopKeyHandler);
@@ -281,33 +275,42 @@ function showQuestion(){
   }
 }
 
-/******************** SUBMIT & TIMER ********************/
+/******************** SUBMIT (single entry) & TIMER ********************/
+function safeSubmit(){
+  if (submitLock || ended) return;
+  submitLock = true;
+  handleKey({ key:'Enter' });
+  // small window to swallow repeats/doubles from event bubbling or key repeat
+  setTimeout(()=>{ submitLock = false; }, 120);
+}
+
 function handleKey(e){
-  if(e.key!=="Enter" || ended) return;
-  if(!timerStarted){ startTimer(); timerStarted=true; }
-  const a=getAnswer();
-  const raw=(a?.value||"").trim();
-  const userAns = raw==="" ? NaN : parseInt(raw,10);
+  if (e.key !== "Enter" || ended) return;
+  if (!timerStarted){ startTimer(); timerStarted = true; }
+
+  const a = getAnswer();
+  const raw = (a?.value || "").trim();
+  const userAns = raw === "" ? NaN : parseInt(raw, 10);
   userAnswers.push(isNaN(userAns) ? "" : userAns);
-  if(!isNaN(userAns) && userAns===allQuestions[current].a) score++;
+
+  if (!isNaN(userAns) && userAns === allQuestions[current].a) score++;
   current++; showQuestion();
 }
 
 function startTimer(){
-  if(timer) clearInterval(timer);
+  if (timer) clearInterval(timer);
   timer = setInterval(()=>{
     time--;
     const t=getTimerEl(); const m=Math.floor(time/60), s=time%60;
-    if(t) t.textContent=`Time left: ${m}:${s<10?"0":""}${s}`; // hidden by CSS
-    if(time<=0) endQuiz();
+    if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`; // hidden by CSS
+    if (time <= 0) endQuiz();
   }, 1000);
 }
 
 /******************** END & SUBMIT ********************/
 function endQuiz(){
-  if (ended) return; ended=true;
+  if (ended) return; ended = true;
   if (timer){ clearInterval(timer); timer=null; }
-
   if (desktopKeyHandler){ document.removeEventListener('keydown', desktopKeyHandler); desktopKeyHandler=null; }
 
   const q=getQEl(), a=getAnswer(), t=getTimerEl(), pad=getPadEl(), s=getScoreEl();
