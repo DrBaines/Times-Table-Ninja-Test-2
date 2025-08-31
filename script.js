@@ -1,12 +1,7 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-9)
-   - Fix: iOS readOnly input sometimes not showing typed digits
-          via on-screen keypad → add visible echo + robust updates
-   - Greeting simplified: “Hello, {name}!”
-   - Review: no corrected answers shown
-   REMINDER: bump versions in index.html:
-   <link rel="stylesheet" href="./styles.css?v=frontpage-9" />
-   <script src="./script.js?v=frontpage-9"></script>
+   Times Tables Trainer - Script (frontpage-10)
+   - Adds White Ninja Belt (mixed 3× & 4×) in same quiz format
+   - Keeps hidden timer, keypad, review, Sheets submission
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -17,16 +12,12 @@ const SHEET_SECRET   = "Banstead123";
 /********* Offline/refresh-safe queue for submissions *********/
 let pendingSubmissions = JSON.parse(localStorage.getItem("pendingSubmissions") || "[]");
 let isFlushing = false;
-
 function saveQueue_(){ localStorage.setItem("pendingSubmissions", JSON.stringify(pendingSubmissions)); }
-
 function queueSubmission(payload){
   if (!payload || !payload.id || !payload.table) { console.warn("Not queuing bad payload:", payload); return; }
   if (pendingSubmissions.some(p => p.id === payload.id)) return;
-  pendingSubmissions.push(payload);
-  saveQueue_();
+  pendingSubmissions.push(payload); saveQueue_();
 }
-
 async function flushQueue(){
   if (isFlushing || !pendingSubmissions.length) return;
   isFlushing = true;
@@ -34,25 +25,16 @@ async function flushQueue(){
   for (const payload of pendingSubmissions){
     try {
       if (!payload || !payload.id || !payload.table) { console.warn("Skipping bad queued payload:", payload); continue; }
-      await fetch(SHEET_ENDPOINT, {
-        method: "POST",
-        mode: "no-cors",
-        body: new Blob([JSON.stringify(payload)], { type: "text/plain;charset=utf-8" })
-      });
-    } catch (e){
-      remaining.push(payload);
-      console.error("Flush failed, will retry:", e);
-    }
+      await fetch(SHEET_ENDPOINT, { method: "POST", mode: "no-cors",
+        body: new Blob([JSON.stringify(payload)], { type: "text/plain;charset=utf-8" }) });
+    } catch (e){ remaining.push(payload); console.error("Flush failed, will retry:", e); }
   }
-  pendingSubmissions = remaining;
-  saveQueue_();
-  isFlushing = false;
+  pendingSubmissions = remaining; saveQueue_(); isFlushing = false;
 }
 window.addEventListener("online", flushQueue);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") flushQueue(); });
 window.addEventListener("pagehide", () => {
-  try {
-    if (!pendingSubmissions.length) return;
+  try { if (!pendingSubmissions.length) return;
     const payload = new Blob([JSON.stringify({ pending: pendingSubmissions })], { type: "text/plain;charset=utf-8" });
     navigator.sendBeacon?.(SHEET_ENDPOINT, payload);
   } catch(_) {}
@@ -60,8 +42,14 @@ window.addEventListener("pagehide", () => {
 window.addEventListener("DOMContentLoaded", flushQueue);
 
 /******************** STATE ********************/
-let selectedBase = null;      // 2..12
-let mode = 'baseline';        // 'baseline' | 'tester'
+let selectedBase = null;      // for Mini: 2..12
+let mode = 'baseline';        // 'baseline' | 'tester' (Mini only)
+let quizType = 'single';      // 'single' | 'ninja'
+let ninjaName = '';           // e.g., 'White Ninja Belt'
+let ninjaBases = [];          // e.g., [3,4]
+const NINJA_QUESTIONS = 12;
+const NINJA_TIME = 45;
+
 let allQuestions = [];
 let current = 0;
 let score = 0;
@@ -71,6 +59,7 @@ let timerStarted = false;
 let ended = false;
 let userAnswers = [];
 let username = "";
+
 const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 const MAX_ANSWER_LEN = 4;
 
@@ -87,16 +76,9 @@ const getNinja = () => $("ninja-screen");
 const getQuiz  = () => $("quiz-container");
 
 /******************** DEVICE DETECTION ********************/
-function isIOSLike(){
-  const ua = navigator.userAgent || '';
-  const iOS = /iPad|iPhone|iPod/.test(ua);
-  const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-  return iOS || iPadAsMac;
-}
-function preventSoftKeyboard(e){
-  const a = getAnswer();
-  if (a && a.readOnly){ e.preventDefault(); a.blur(); }
-}
+function isIOSLike(){ const ua = navigator.userAgent || ''; const iOS = /iPad|iPhone|iPod/.test(ua);
+  const iPadAsMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1; return iOS || iPadAsMac; }
+function preventSoftKeyboard(e){ const a = getAnswer(); if (a && a.readOnly){ e.preventDefault(); a.blur(); }}
 
 /******************** SMALL UI HELPERS ********************/
 function show(el){ if(el) el.style.display = "block"; }
@@ -121,10 +103,8 @@ function setUsernameFromHome(){
 function goHome(){ clearResultsUI(); hide(getMini()); hide(getNinja()); hide(getQuiz()); show(getHome()); }
 function goMini(){
   setUsernameFromHome();
-  const hello = $('hello-user');
-  if (hello) hello.textContent = username ? `Hello, ${username}!` : "";
-  clearResultsUI();
-  hide(getHome()); hide(getNinja()); hide(getQuiz()); show(getMini());
+  const hello = $('hello-user'); if (hello) hello.textContent = username ? `Hello, ${username}!` : "";
+  clearResultsUI(); hide(getHome()); hide(getNinja()); hide(getQuiz()); show(getMini());
 }
 function goNinja(){ setUsernameFromHome(); clearResultsUI(); hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja()); }
 function quitToMini(){ if (timer){ clearInterval(timer); timer = null; } clearResultsUI(); hide(getQuiz()); show(getMini()); }
@@ -133,65 +113,33 @@ function quitToMini(){ if (timer){ clearInterval(timer); timer = null; } clearRe
 function buildTableButtons(){
   const container = $('table-choices'); if (!container) return;
   container.innerHTML = '';
-  TABLES.forEach(b => {
-    const btn = document.createElement('button');
+  TABLES.forEach(b => { const btn = document.createElement('button');
     btn.type = "button"; btn.className = "choice"; btn.id = `btn-${b}`; btn.textContent = `${b}×`;
-    btn.addEventListener('click', () => selectTable(b));
-    container.appendChild(btn);
+    btn.addEventListener('click', () => selectTable(b)); container.appendChild(btn);
   });
 }
 
 /* Answer Echo (for iOS readOnly visual refresh issues) */
-function ensureAnswerEcho(){
-  let echo = $('answer-echo');
-  if (!echo){
-    echo = document.createElement('div');
-    echo.id = 'answer-echo';
-    echo.className = 'answer-echo';
-    const a = getAnswer();
-    if (a && a.parentElement){ a.parentElement.insertBefore(echo, a.nextSibling); }
-  }
-  return echo;
-}
+function ensureAnswerEcho(){ let echo = $('answer-echo'); if (!echo){ echo = document.createElement('div'); echo.id='answer-echo'; echo.className='answer-echo';
+  const a=getAnswer(); if (a && a.parentElement){ a.parentElement.insertBefore(echo, a.nextSibling); } } return echo; }
 function updateAnswerEcho(){
-  const a = getAnswer(); if (!a) return;
-  const echo = ensureAnswerEcho();
-  const useEcho = isIOSLike(); // only needed on iOS-like devices
-  if (useEcho){
-    echo.style.display = "block";
-    echo.textContent = (a.value || ""); // mirror value
-  } else {
-    echo.style.display = "none";
-  }
+  const a = getAnswer(); if (!a) return; const echo = ensureAnswerEcho(); const useEcho = isIOSLike();
+  if (useEcho){ echo.style.display = "block"; echo.textContent = (a.value || ""); } else { echo.style.display = "none"; }
 }
 
 /* Build the keypad if missing, and always force it visible */
 let hasAnswerKeydownHandler = false;
 function buildKeypadIfNeeded(){
-  const pad = getPadEl(); const a = getAnswer();
-  if (!pad || !a) return;
-
+  const pad = getPadEl(); const a = getAnswer(); if (!pad || !a) return;
   pad.classList.add('calc-pad');
   if (pad.childElementCount === 0){
     const labels = ['7','8','9','⌫', '4','5','6','Enter', '1','2','3', '0','Clear'];
-    const pos = {
-      '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back',
-      '4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter',
-      '1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'
-    };
-    labels.forEach(label => {
-      const btn = document.createElement('button');
-      btn.type = 'button'; btn.textContent = label;
-      btn.setAttribute('aria-label', label==='⌫' ? 'Backspace' : label);
-      if (label==='Enter') btn.classList.add('calc-btn--enter');
-      if (label==='Clear') btn.classList.add('calc-btn--clear');
-      if (label==='⌫')     btn.classList.add('calc-btn--back');
+    const pos = { '7':'key-7','8':'key-8','9':'key-9','⌫':'key-back','4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter','1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear' };
+    labels.forEach(label => { const btn = document.createElement('button'); btn.type='button'; btn.textContent=label;
+      btn.setAttribute('aria-label', label==='⌫'?'Backspace':label);
+      if (label==='Enter') btn.classList.add('calc-btn--enter'); if (label==='Clear') btn.classList.add('calc-btn--clear'); if (label==='⌫') btn.classList.add('calc-btn--back');
       btn.classList.add(pos[label]);
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); e.stopPropagation();
-        if (isIOSLike()) getAnswer()?.blur();
-        handlePadPress(label);
-      });
+      btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); e.stopPropagation(); if (isIOSLike()) getAnswer()?.blur(); handlePadPress(label); });
       pad.appendChild(btn);
     });
   }
@@ -200,22 +148,13 @@ function buildKeypadIfNeeded(){
   function handlePadPress(label){
     const a = getAnswer(); if (!a) return;
     switch(label){
-      case 'Clear':
-        a.value=''; a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); break;
-      case '⌫':
-        a.value=a.value.slice(0,-1); a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); break;
-      case 'Enter':
-        if (!timerStarted){ startTimer(); timerStarted = true; }
-        window.handleKey({ key:'Enter' }); updateAnswerEcho(); break;
+      case 'Clear': a.value=''; a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); break;
+      case '⌫': a.value=a.value.slice(0,-1); a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); break;
+      case 'Enter': if (!timerStarted){ startTimer(); timerStarted = true; } window.handleKey({ key:'Enter' }); updateAnswerEcho(); break;
       default:
-        if (/^\d$/.test(label)){
-          if (a.value.length>=MAX_ANSWER_LEN) return;
-          a.value += label;
-          // keep caret at end if editable
+        if (/^\d$/.test(label)){ if (a.value.length>=MAX_ANSWER_LEN) return; a.value += label;
           try { a.setSelectionRange(a.value.length, a.value.length); } catch(_) {}
-          a.dispatchEvent(new Event('input',{bubbles:true}));
-          updateAnswerEcho();
-        }
+          a.dispatchEvent(new Event('input',{bubbles:true})); updateAnswerEcho(); }
     }
   }
 
@@ -224,14 +163,14 @@ function buildKeypadIfNeeded(){
     a.addEventListener('keydown', (e) => {
       const ok = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
       if (ok.includes(e.key)) return;
-      if (!/^\d$/.test(e.key)) e.preventDefault();
-      if (/^\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
+      if (!/^\\d$/.test(e.key)) e.preventDefault();
+      if (/^\\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
     });
     hasAnswerKeydownHandler = true;
   }
 }
 
-/******************** SELECTION ********************/
+/******************** SELECTION (Mini) ********************/
 function selectTable(base){
   selectedBase = base;
   TABLES.forEach(b => { const el = $(`btn-${b}`); if (el) el.classList.toggle('selected', b === base); });
@@ -241,14 +180,12 @@ function selectMode(m){
   const elB = $('mode-baseline'); const elT = $('mode-tester');
   if (elB && elT){ elB.classList.toggle('selected', mode==='baseline'); elT.classList.toggle('selected', mode==='tester'); }
 }
-
-/* Init */
-(function init(){ const elB = $('mode-baseline'), elT = $('mode-tester'); if (elB && elT){ elB.classList.add('selected'); elT.classList.remove('selected'); } })();
+(function init(){ const elB=$('mode-baseline'), elT=$('mode-tester'); if (elB && elT){ elB.classList.add('selected'); elT.classList.remove('selected'); } })();
 document.addEventListener('DOMContentLoaded', buildTableButtons);
 
-/******************** QUESTION BUILDER ********************/
-function buildQuestions(base){
-  const perSet = (mode==='tester') ? 4 : 10;
+/******************** QUESTION BUILDERS ********************/
+function buildQuestionsSingle(base){
+  const perSet = (mode==='tester') ? 4 : 10; // 12 or 30 total
   const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${base} × ${i}`, a:base*i});
   const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${i} × ${base}`, a:base*i});
   const div =[]; for(let i=0;i<=12;i++) div.push({q:`${base*i} ÷ ${base}`, a:i});
@@ -257,31 +194,57 @@ function buildQuestions(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,perSet);
   return [...set1, ...set2, ...set3];
 }
+function buildQuestionsMixed(bases, total=NINJA_QUESTIONS){
+  const perTypePerBase = Math.max(1, Math.floor(total / (bases.length * 3))); // spread across mul1, mul2, div for each base
+  let qs = [];
+  bases.forEach(base => {
+    const mul1=[], mul2=[], div=[];
+    for(let i=0;i<=12;i++){ mul1.push({q:`${base} × ${i}`, a:base*i}); mul2.push({q:`${i} × ${base}`, a:base*i}); div.push({q:`${base*i} ÷ ${base}`, a:i}); }
+    qs.push(...mul1.sort(()=>0.5-Math.random()).slice(0,perTypePerBase));
+    qs.push(...mul2.sort(()=>0.5-Math.random()).slice(0,perTypePerBase));
+    qs.push(...div .sort(()=>0.5-Math.random()).slice(0,perTypePerBase));
+  });
+  // If under target due to rounding, top up with random from all pools
+  while (qs.length < total){
+    const base = bases[Math.floor(Math.random()*bases.length)];
+    const i = Math.floor(Math.random()*13);
+    const type = Math.floor(Math.random()*3);
+    if (type===0) qs.push({q:`${base} × ${i}`, a:base*i});
+    else if (type===1) qs.push({q:`${i} × ${base}`, a:base*i});
+    else qs.push({q:`${base*i} ÷ ${base}`, a:i});
+  }
+  return qs.sort(()=>0.5-Math.random());
+}
 
 /******************** QUIZ FLOW ********************/
-function startQuiz(){
+function startQuiz(){ // Mini
+  quizType = 'single';
   if (!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
+  preflightAndStart(() => buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×${mode==='tester'?' (Tester)':''}`, (mode==='tester')?30:90);
+}
 
+function startWhiteBelt(){ // Ninja: White
+  quizType = 'ninja';
+  ninjaName = 'White Ninja Belt';
+  ninjaBases = [3,4];
+  preflightAndStart(() => buildQuestionsMixed(ninjaBases, NINJA_QUESTIONS), `${ninjaName} — 3× & 4×`, NINJA_TIME);
+}
+
+function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
-
   if (!username){
     const name = $('home-username')?.value.trim() || "";
     if (!name){ alert("Please enter your name on the home page first."); return; }
     username = name; try { localStorage.setItem('ttt_username', username); } catch(_) {}
   }
-
   if (timer){ clearInterval(timer); timer = null; }
-  time = (mode==='tester') ? 30 : 90;
-  timerStarted = false; ended = false; score = 0; current = 0; userAnswers = [];
-  const t = getTimerEl(); const m = Math.floor(time/60), s = time%60;
-  if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
+  time = timerSeconds; timerStarted = false; ended = false; score = 0; current = 0; userAnswers = [];
+  const t = getTimerEl(); const m = Math.floor(time/60), s = time%60; if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
 
-  allQuestions = buildQuestions(selectedBase);
+  allQuestions = qBuilder();
 
   hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
-
-  const welcome = $("welcome-user");
-  if (welcome) welcome.textContent = `Practising ${selectedBase}×${mode==='tester'?' (Tester)':''}`;
+  const welcome = $("welcome-user"); if (welcome) welcome.textContent = welcomeText;
 
   const a = getAnswer();
   if (a){
@@ -291,20 +254,18 @@ function startQuiz(){
       a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
       a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
       a.addEventListener('focus',      preventSoftKeyboard, true);
-      ensureAnswerEcho(); updateAnswerEcho();
+      updateAnswerEcho();
     } else {
       a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
       a.removeEventListener('touchstart', preventSoftKeyboard);
       a.removeEventListener('mousedown',  preventSoftKeyboard);
       a.removeEventListener('focus',      preventSoftKeyboard, true);
-      $("answer-echo") && ( $("answer-echo").style.display = "none" );
+      const echo = $('answer-echo'); if (echo) echo.style.display = "none";
       a.onkeydown = (e) => { if (e.key === 'Enter') handleKey(e); };
     }
   }
-
   const pad = getPadEl(); if (pad){ pad.innerHTML = ''; pad.style.display = 'grid'; }
   buildKeypadIfNeeded();
-
   showQuestion();
 }
 
@@ -314,19 +275,11 @@ function showQuestion(){
     if (q) q.textContent = allQuestions[current].q;
     if (a){
       a.value = ""; a.disabled = false; a.style.display = "inline-block";
-      if (isIOSLike()){
-        a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
-        updateAnswerEcho();
-      } else {
-        a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
-        setTimeout(()=>a.focus(), 0);
-        $("answer-echo") && ( $("answer-echo").style.display = "none" );
-      }
+      if (isIOSLike()){ a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur(); updateAnswerEcho(); }
+      else { a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex'); setTimeout(()=>a.focus(), 0); const echo=$('answer-echo'); if (echo) echo.style.display="none"; }
     }
     const pad = getPadEl(); if (pad) pad.style.display = "grid";
-  } else {
-    endQuiz();
-  }
+  } else { endQuiz(); }
 }
 
 function handleKey(e){
@@ -360,7 +313,7 @@ function endQuiz(){
 
   const q = getQEl(), a = getAnswer(), t = getTimerEl(), pad = getPadEl(), s = getScoreEl();
   if (q) q.textContent = ""; if (a) a.style.display = "none"; if (pad) pad.style.display = "none"; if (t) t.style.display = "none";
-  $("answer-echo") && ( $("answer-echo").style.display = "none" );
+  const echo = $('answer-echo'); if (echo) echo.style.display = "none";
 
   if (a){
     a.readOnly = false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
@@ -379,8 +332,13 @@ function endQuiz(){
   }
 
   const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const modeMark = (mode==='tester') ? ' (tester)' : '';
-  const tableStr = `${selectedBase}x${modeMark}`.trim();
+  let tableStr = "";
+  if (quizType === 'single'){
+    const modeMark = (mode==='tester') ? ' (tester)' : '';
+    tableStr = `${selectedBase}x${modeMark}`.trim();
+  } else {
+    tableStr = `${ninjaName} (3&4)`;
+  }
   const uaSafe = String(navigator.userAgent || '').slice(0, 180);
 
   const payload = { id: submissionId, secret: SHEET_SECRET, table: tableStr, name: username,
@@ -414,3 +372,4 @@ window.selectTable = selectTable;
 window.selectMode  = selectMode;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
+window.startWhiteBelt = startWhiteBelt;
