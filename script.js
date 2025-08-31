@@ -108,12 +108,11 @@ function goMini(){
 }
 function goNinja(){ setUsernameFromHome(); clearResultsUI(); hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja()); }
 
-/* Quit: during quiz -> Mini; after quiz -> Home */
 function quitFromQuiz(){
   if (timer){ clearInterval(timer); timer=null; }
   clearResultsUI();
   hide(getQuiz());
-  if (ended) { show(getHome()); } else { show(getMini()); }
+  show(getHome());   // always go home
 }
 
 /******************** UI BUILDERS ********************/
