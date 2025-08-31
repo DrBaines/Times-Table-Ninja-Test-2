@@ -218,7 +218,7 @@ body {
 
 /* Colour themes: card background matches belt-name background */
 .belt-card.white { background: #ffffff; }
-.belt-card.white .belt-name { background: #ffffff; color: #111; border: 1px solid rgba(0,0,0,0.2); }
+.belt-card.white .belt-name { background: #ffffff; color: #111;  }
 
 .belt-card.yellow { background: #fff59d; }
 .belt-card.yellow .belt-name { background: #fff59d; color: #111; }
