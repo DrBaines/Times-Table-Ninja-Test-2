@@ -220,25 +220,26 @@ function buildMixedWithMissing(bases, total, maxFactor = 12, missingRatio = 0.5)
   return shuffle(out);
 }
 /* Silver: (a×10^k)×(b×10^m)=c  OR  c÷(a×10^k)=(b×10^m) */
+
 function buildSilverQuestions(total){
   const bases = [2,3,4,5,6,7,8,9,10,11,12];
   const pow = [0,1];
   const out = [];
-  for (let n=0;n<total;n++){
+  for (let n=0; n<total; n++){
     const a = bases[Math.floor(Math.random()*bases.length)];
     const b = bases[Math.floor(Math.random()*bases.length)];
     const k = pow[Math.floor(Math.random()*pow.length)];
     const m = pow[Math.floor(Math.random()*pow.length)];
-    const A = a * (k===0 ? 1 : 10);
-    const B = b * (m===0 ? 1 : 10);
-    const c = A * B; // integer
+    const A = a * Math.pow(10, k);
+    const B = b * Math.pow(10, m);
+    const c = A * B;
 
     if (Math.random() < 0.5){
-      // multiplication: children work out c
-      out.push({ q:`${a}×10^${k} × ${b}×10^${m}`, a: c });
+      // multiplication: children solve for c
+      out.push({ q:`${A} × ${B}`, a:c });
     } else {
-      // division: c ÷ (a×10^k) = (b×10^m) — children work out (b×10^m)
-      out.push({ q:`${c} ÷ ${a}×10^${k}`, a: B });
+      // division: c ÷ A = B
+      out.push({ q:`${c} ÷ ${A}`, a:B });
     }
   }
   return shuffle(out);
