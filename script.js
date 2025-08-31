@@ -59,14 +59,14 @@ function syncAnswerMaxLen(){
 
 /* ---------- navigation ---------- */
 function setScreen(id){
-  ["home","mini","ninja","quiz-container"].forEach(v=>{
-    const el = $(v);
+  ["home-screen","mini-screen","ninja-screen","quiz-container"].forEach(v=>{
+    const el = document.getElementById(v);
     if (el) el.style.display = (v===id ? "block" : "none");
   });
   document.body.setAttribute("data-screen", id);
 }
 
-function goHome(){ setScreen("home"); }
+function goHome(){ setScreen("home-screen"); }
 function goMini(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
   const nameInput = $("name-input");
@@ -77,7 +77,7 @@ function goMini(){
   const hello = $("mini-hello");
   if (hello) hello.textContent = userName ? `Hello, ${userName}!` : "Hello!";
   buildTableButtons();
-  setScreen("mini");
+  setScreen("mini-screen");
 }
 function goNinja(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
@@ -86,7 +86,7 @@ function goNinja(){
     const val = nameInput.value.trim();
     if (val) { userName = val; localStorage.setItem(NAME_KEY, userName); }
   }
-  setScreen("ninja");
+  setScreen("ninja-screen");
 }
 function quitFromQuiz(){
   teardownQuiz();
