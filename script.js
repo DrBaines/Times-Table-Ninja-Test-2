@@ -224,39 +224,57 @@ let desktopKeyHandler = null;
 function startQuiz(){ // Mini baseline (50/5 min)
   quizType='single';
   if(!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
-  preflightAndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
+  AndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
 }
 
 /* ===== Ninja belts ===== */
-function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([3,4]),       `${ninjaName} — 3× & 4× (50Qs / 5 min)`, QUIZ_TIME); }
-function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([4,6]),       `${ninjaName} — 4× & 6× (50Qs / 5 min)`, QUIZ_TIME); }
-function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `${ninjaName} — 2×,3×,4×,5×,6× (50Qs / 5 min)`, QUIZ_TIME); }
-function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([4,8]),       `${ninjaName} — 4× & 8× (50Qs / 5 min)`, QUIZ_TIME); }
-function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,8]),       `${ninjaName} — 7× & 8× (50Qs / 5 min)`, QUIZ_TIME); }
+function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  AndStart(()=>buildQuestionsMixedBaseline([3,4]),       `${ninjaName} — 3× & 4× (50Qs / 5 min)`, QUIZ_TIME); }
+function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; AndStart(()=>buildQuestionsMixedBaseline([4,6]),       `${ninjaName} — 4× & 6× (50Qs / 5 min)`, QUIZ_TIME); }
+function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; AndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `${ninjaName} — 2×,3×,4×,5×,6× (50Qs / 5 min)`, QUIZ_TIME); }
+function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  AndStart(()=>buildQuestionsMixedBaseline([4,8]),       `${ninjaName} — 4× & 8× (50Qs / 5 min)`, QUIZ_TIME); }
+function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   AndStart(()=>buildQuestionsMixedBaseline([7,8]),       `${ninjaName} — 7× & 8× (50Qs / 5 min)`, QUIZ_TIME); }
 function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),       `${ninjaName} — 7× & 9× (50Qs / 5 min)`, QUIZ_TIME); }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
   if(!username){
-    const name=$('home-username')?.value.trim() || "";
+    const name = $('home-username')?.value.trim() || "";
     if(!name){ alert("Please enter your name on the home page first."); return; }
-    username=name; try{ localStorage.setItem('ttt_username', username); }catch{}
+    username = name; try{ localStorage.setItem('ttt_username', username); }catch{}
   }
 
-  if(timer){ clearInterval(timer); timer=null; }
-  time=timerSeconds; timerStarted=false; ended=false; score=0; current=0; userAnswers=[]; submitLock=false;
-  const t=getTimerEl(); const m=Math.floor(time/60), s=time%60; if(t) t.textContent=`Time left: ${m}:${s<10?"0":""}${s}`;
+  if (timer){ clearInterval(timer); timer = null; }
+  time = timerSeconds;
+  timerStarted = false; ended = false; score = 0; current = 0;
+  userAnswers = []; submitLock = false;
+
+  const t = getTimerEl();
+  const m = Math.floor(time/60), s = time % 60;
+  if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
 
   allQuestions = qBuilder();
 
   hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
-  const welcome=$("welcome-user"); if(welcome) welcome.textContent=welcomeText;
+  const welcome = $("welcome-user"); if (welcome) welcome.textContent = welcomeText;
 
-  const a=getAnswer();
-  if(a){
-    a.value=""; a.disabled=false; a.style.display="inline-block";
-    if(!isiOS){
-      a.readOnly=false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
+  /* 🎨 Pale background based on belt (Mini stays default) */
+  const quiz = getQuiz();
+  let bg = "#eef"; // default for Mini tests
+  if (quizType === "ninja") {
+    if (ninjaName.includes("White"))  bg = "#fafafa";
+    else if (ninjaName.includes("Yellow")) bg = "#fffde7";
+    else if (ninjaName.includes("Orange")) bg = "#fff3e0";
+    else if (ninjaName.includes("Green"))  bg = "#e8f5e9";
+    else if (ninjaName.includes("Blue"))   bg = "#e3f2fd";
+    else if (ninjaName.includes("Pink"))   bg = "#fce4ec";
+  }
+  if (quiz) quiz.style.background = bg;
+
+  const a = getAnswer();
+  if (a){
+    a.value = ""; a.disabled = false; a.style.display = "inline-block";
+    if (!isiOS){
+      a.readOnly = false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
       a.addEventListener('input', ()=>{ a.value = a.value.replace(/\D+/g,'').slice(0,MAX_ANSWER_LEN); });
       setTimeout(()=>a.focus(),0);
 
@@ -268,7 +286,10 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
 
         if (/^\d$/.test(e.key)){
           e.preventDefault();
-          if (a.value.length < MAX_ANSWER_LEN){ a.value += e.key; a.dispatchEvent(new Event('input',{bubbles:true})); }
+          if (a.value.length < MAX_ANSWER_LEN){
+            a.value += e.key;
+            a.dispatchEvent(new Event('input',{bubbles:true}));
+          }
           try{ a.setSelectionRange(a.value.length, a.value.length); }catch{}
         } else if (e.key==='Backspace' || e.key==='Delete'){
           e.preventDefault();
@@ -281,19 +302,20 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
       };
       document.addEventListener('keydown', desktopKeyHandler);
     } else {
-      // iOS path (only if FORCE_DESKTOP=false)
-      a.readOnly=true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
+      // iOS path (only if FORCE_DESKTOP === false)
+      a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
       a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
       a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
       a.addEventListener('focus',      preventSoftKeyboard, true);
     }
   }
 
-  const pad=getPadEl(); if(pad){ pad.innerHTML=''; pad.style.display='grid'; }
+  const pad = getPadEl(); if (pad){ pad.innerHTML=''; pad.style.display='grid'; }
   buildKeypadIfNeeded();
 
   showQuestion();
 }
+
 
 function showQuestion(){
   const q=getQEl(); const a=getAnswer();
