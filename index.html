@@ -41,12 +41,11 @@
     </div>
   </main>
 
-  <!-- ===== MINI TESTS SETUP (single tables) ===== -->
+  <!-- ===== MINI TESTS SETUP ===== -->
   <section id="mini-screen" class="center" style="display:none;" aria-labelledby="mini-title">
     <h2 class="subtitle" id="hello-user"></h2>
-
     <h2 class="subtitle" id="mini-title" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
-    <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices"></div>
+    <div id="table-choices" class="choice-buttons" role="group"></div>
 
     <div class="choice-buttons">
       <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz (50 Q / 5 min)</button>
@@ -149,24 +148,16 @@
       <div class="question-col">
         <h2 id="quiz-title" class="visually-hidden">Times Table Question</h2>
         <div id="question" class="question" role="status" aria-live="polite"></div>
-        <label for="answer" class="visually-hidden">Your answer</label>
-        <input
-          type="text"
-          id="answer"
-          class="answer-input"
-          inputmode="numeric"
-          autocomplete="off"
-          aria-label="Your answer"
-        />
+        <input type="text" id="answer" class="answer-input" inputmode="numeric" autocomplete="off" />
       </div>
 
-      <div id="answer-pad" class="answer-pad calc-pad" aria-label="On-screen number pad" role="group">
+      <div id="answer-pad" class="answer-pad" aria-label="On-screen number pad" role="group">
         <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
       </div>
     </div>
 
     <div id="timer" class="timer" aria-hidden="true">Time left</div>
-    <div id="score" class="score" role="region" aria-label="Score and answers"></div>
+    <div id="score" class="score" role="region"></div>
 
     <div class="choice-buttons">
       <button class="big-button" onclick="quitFromQuiz()">Quit to Home</button>
