@@ -1,17 +1,17 @@
-/* Times Tables Trainer — script.js (frontpage-43)
-   - Aligns to your HTML IDs: home-screen, mini-screen, ninja-screen, quiz-container
-   - Uses home-username (name input), hello-user (mini greeting), answer-pad (keypad host)
-   - Keypad is created only during quiz, destroyed on exit
-   - Dynamic answer length with +2 digits headroom
-   - Hidden 5-min timer, belt rules, offline queue intact
+/* Times Tables Trainer — script.js (frontpage-45)
+   - DOMContentLoaded init so Home stays visible
+   - Screen IDs aligned: home-screen, mini-screen, ninja-screen, quiz-container
+   - Keypad created only during quiz inside #answer-pad (fixed)
+   - +2 digit headroom for answer length
+   - All functions exported to window.*
 */
 
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
 const SHEET_SECRET   = "Banstead123";
 
 const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes
-const BASE_MAX_ANSWER_LEN  = 4;   // most modes fit ≤ 4 digits
-const EXTRA_DIGITS_ALLOWED = 2;   // allow +2 beyond correct answer length
+const BASE_MAX_ANSWER_LEN  = 4;
+const EXTRA_DIGITS_ALLOWED = 2;
 const QUEUE_KEY            = "tttQueueV1";
 const NAME_KEY             = "tttName";
 
@@ -28,51 +28,44 @@ let timerInterval = null;
 let timerDeadline = 0;
 
 let desktopKeyHandler = null;
-let submitLockedUntil = 0; // anti double-submit
+let submitLockedUntil = 0;
 
-/* ---------- utils ---------- */
 const $ = (id)=>document.getElementById(id);
-const clamp = (n,min,max)=>Math.max(min, Math.min(max, n));
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 const randInt=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
 const cryptoRandom=()=>String(Date.now())+"-"+Math.floor(Math.random()*1e9);
 function hashDJB2(s){ let h=5381; for(let i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i); h|=0;} return h>>>0; }
 
-/* ---------- dynamic max length (with +2 headroom) ---------- */
 function getMaxLenForCurrentQuestion(){
   try{
     const q = allQuestions[currentIndex];
     if (!q || typeof q.a === "undefined") return BASE_MAX_ANSWER_LEN;
     const ansLen = String(q.a).length;
     return Math.max(BASE_MAX_ANSWER_LEN, ansLen + EXTRA_DIGITS_ALLOWED);
-  }catch{
-    return BASE_MAX_ANSWER_LEN;
-  }
+  }catch{ return BASE_MAX_ANSWER_LEN; }
 }
 function syncAnswerMaxLen(){
-  const a = $("answer");
-  if (!a) return;
+  const a = $("answer"); if(!a) return;
   const cap = getMaxLenForCurrentQuestion();
-  try{ a.setAttribute("maxlength", String(cap)); }catch{}
+  a.setAttribute("maxlength", String(cap));
   if (a.value.length > cap) a.value = a.value.slice(0, cap);
 }
 
 /* ---------- navigation ---------- */
 function setScreen(id){
   ["home-screen","mini-screen","ninja-screen","quiz-container"].forEach(v=>{
-    const el = $(v);
-    if (el) el.style.display = (v===id ? "block" : "none");
+    const el = $(v); if (el) el.style.display = (v===id ? "block" : "none");
   });
   document.body.setAttribute("data-screen", id);
 }
-
 function goHome(){ setScreen("home-screen"); }
 function goMini(){
-  if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
+  if (!userName) userName = (localStorage.getItem(NAME_KEY) || "").trim();
   const nameInput = $("home-username");
   if (nameInput){
     const val = nameInput.value.trim();
-    if (val) { userName = val; localStorage.setItem(NAME_KEY, userName); }
+    if (val){ userName = val; localStorage.setItem(NAME_KEY, userName); }
   }
   const hello = $("hello-user");
   if (hello) hello.textContent = userName ? `Hello, ${userName}!` : "Hello!";
@@ -80,29 +73,26 @@ function goMini(){
   setScreen("mini-screen");
 }
 function goNinja(){
-  if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
+  if (!userName) userName = (localStorage.getItem(NAME_KEY) || "").trim();
   const nameInput = $("home-username");
   if (nameInput){
     const val = nameInput.value.trim();
-    if (val) { userName = val; localStorage.setItem(NAME_KEY, userName); }
+    if (val){ userName = val; localStorage.setItem(NAME_KEY, userName); }
   }
   setScreen("ninja-screen");
 }
 function quitFromQuiz(){
   teardownQuiz();
-  destroyKeypad(); // ensure keypad removed
+  destroyKeypad();
   goHome();
 }
 
 /* ---------- mini tests ---------- */
 let selectedBase = 2;
 function buildTableButtons(){
-  const wrap = $("table-choices");
-  if (!wrap) return;
+  const wrap = $("table-choices"); if(!wrap) return;
   let html = "";
-  for (let b=2; b<=12; b++){
-    html += `<button class="table-btn" onclick="selectTable(${b})">${b}×</button>`;
-  }
+  for (let b=2;b<=12;b++){ html += `<button class="table-btn" onclick="selectTable(${b})">${b}×</button>`; }
   wrap.innerHTML = html;
 }
 function selectTable(b){ selectedBase = clamp(b,2,12); }
@@ -204,19 +194,16 @@ function buildSilverQuestions(total){
   const bases = [2,3,4,5,6,7,8,9,10,11,12];
   const pow = [0,1];
   const out = [];
-  for (let n=0; n<total; n++){
+  for (let n=0;n<total;n++){
     const a = bases[Math.floor(Math.random()*bases.length)];
     const b = bases[Math.floor(Math.random()*bases.length)];
     const k = pow[Math.floor(Math.random()*pow.length)];
     const m = pow[Math.floor(Math.random()*pow.length)];
-    const A = a * Math.pow(10, k);  // expanded
-    const B = b * Math.pow(10, m);  // expanded
+    const A = a * Math.pow(10, k);
+    const B = b * Math.pow(10, m);
     const c = A * B;
-    if (Math.random() < 0.5){
-      out.push({ q: `${A} × ${B}`, a: c });
-    } else {
-      out.push({ q: `${c} ÷ ${A}`, a: B });
-    }
+    if (Math.random() < 0.5) out.push({ q:`${A} × ${B}`, a:c });
+    else out.push({ q:`${c} ÷ ${A}`, a:B });
   }
   return shuffle(out);
 }
@@ -232,7 +219,7 @@ function preflightAndStart(questions, opts={}){
   if (quiz) quiz.setAttribute("data-theme", opts.theme || "");
 
   setScreen("quiz-container");
-  createKeypad(); // build keypad only now
+  createKeypad();
 
   const title = $("quiz-title");
   if (title) title.textContent = modeLabel || "Quiz";
@@ -253,30 +240,18 @@ function showQuestion(){
     syncAnswerMaxLen();
     try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
   }
-  const p = $("progress"); // optional
-  if (p) p.textContent = `${currentIndex+1} / ${allQuestions.length}`;
 }
 function handleKey(val){
-  const a = $("answer");
-  if (!a || ended) return;
-  if (val === "enter"){ safeSubmit(); return; }
-  if (val === "back"){
-    a.value = a.value.slice(0,-1);
-    a.dispatchEvent(new Event("input",{bubbles:true}));
-    try{ a.setSelectionRange(a.value.length, a.value.length); }catch{}
-    return;
-  }
-  if (val === "clear"){
-    a.value = "";
-    a.dispatchEvent(new Event("input",{bubbles:true}));
-    return;
-  }
+  const a = $("answer"); if(!a || ended) return;
+  if (val==="enter"){ safeSubmit(); return; }
+  if (val==="back"){ a.value = a.value.slice(0,-1); a.dispatchEvent(new Event("input",{bubbles:true})); try{ a.setSelectionRange(a.value.length,a.value.length);}catch{} return; }
+  if (val==="clear"){ a.value = ""; a.dispatchEvent(new Event("input",{bubbles:true})); return; }
   if (/^\d$/.test(val)){
     const cap = getMaxLenForCurrentQuestion();
     if (a.value.length < cap){
       a.value += val;
       a.dispatchEvent(new Event("input",{bubbles:true}));
-      try{ a.setSelectionRange(a.value.length, a.value.length); }catch{}
+      try{ a.setSelectionRange(a.value.length,a.value.length);}catch{}
     }
   }
 }
@@ -285,9 +260,7 @@ function safeSubmit(){
   if (now < submitLockedUntil) return;
   submitLockedUntil = now + 200;
 
-  const a = $("answer");
-  if (!a || ended) return;
-
+  const a = $("answer"); if(!a || ended) return;
   const valStr = a.value.trim();
   userAnswers[currentIndex] = (valStr === "") ? "" : Number(valStr);
 
@@ -300,27 +273,20 @@ function startTimer(seconds){
   timerDeadline = Date.now() + seconds*1000;
   timerInterval = setInterval(()=>{
     const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now())/1000));
-    const t = $("timer");
-    if (t) t.textContent = String(remaining);
+    const t = $("timer"); if (t) t.textContent = String(remaining);
     if (remaining <= 0){ clearInterval(timerInterval); endQuiz(); }
   }, 250);
 }
 function teardownQuiz(){
-  clearInterval(timerInterval);
-  timerInterval = null;
-  ended = true;
-  submitLockedUntil = 0;
-  if (desktopKeyHandler){
-    document.removeEventListener("keydown", desktopKeyHandler);
-    desktopKeyHandler = null;
-  }
+  clearInterval(timerInterval); timerInterval = null;
+  ended = true; submitLockedUntil = 0;
+  if (desktopKeyHandler){ document.removeEventListener("keydown", desktopKeyHandler); desktopKeyHandler = null; }
 }
 
 /* ---------- end & answers ---------- */
 function endQuiz(){
   teardownQuiz();
-  destroyKeypad(); // remove keypad so nothing can overlay other screens
-
+  destroyKeypad();
   let correct = 0;
   for (let i=0;i<allQuestions.length;i++){
     const c = Number(allQuestions[i].a);
@@ -330,52 +296,31 @@ function endQuiz(){
   const s = $("score");
   if (s){
     s.innerHTML = `
-      <div class="result-line">
-        <strong>${modeLabel}:</strong> ${correct} / ${allQuestions.length}
-      </div>
+      <div class="result-line"><strong>${modeLabel}:</strong> ${correct} / ${allQuestions.length}</div>
       <button class="big-button" onclick="showAnswers()">Show answers</button>
       <button class="big-button" onclick="quitFromQuiz()">Quit</button>
     `;
   }
   try{
-    queueResult({
-      secret: SHEET_SECRET,
-      mode: modeLabel,
-      name: userName || (localStorage.getItem(NAME_KEY) || ""),
-      total: allQuestions.length,
-      correct: correct,
-      ts: new Date().toISOString()
-    });
+    queueResult({ secret:SHEET_SECRET, mode:modeLabel, name:userName || (localStorage.getItem(NAME_KEY)||""), total:allQuestions.length, correct, ts:new Date().toISOString() });
     flushQueue();
   }catch(e){}
 }
 function showAnswers(){
   const s = $("score"); if(!s) return;
-  let html = `
-    <div style="
-      display:grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px;
-      justify-items: start;
-      max-width: 1200px;
-      margin: 20px auto;
-    ">
-  `;
+  let html = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;justify-items:start;max-width:1200px;margin:20px auto;">`;
   allQuestions.forEach((q,i)=>{
     const u = (userAnswers[i]!==undefined && userAnswers[i]!=="") ? userAnswers[i] : "—";
-    const correct = (userAnswers[i]===q.a);
-    html += `<div style="font-size:22px; font-weight:bold; color:${correct?'green':'red'}; text-align:left;">
-      ${q.q} = ${u}
-    </div>`;
+    const ok = (userAnswers[i]===q.a);
+    html += `<div style="font-size:22px;font-weight:bold;color:${ok?'green':'red'};text-align:left;">${q.q} = ${u}</div>`;
   });
   html += "</div>";
   s.innerHTML += html;
 }
 
-/* ---------- keypad: create only during quiz ---------- */
+/* ---------- keypad ---------- */
 function createKeypad(){
-  const host = $("answer-pad");
-  if (!host) return;
+  const host = $("answer-pad"); if(!host) return;
   host.innerHTML = `
     <div class="pad">
       <button class="pad-btn" data-k="7">7</button>
@@ -397,53 +342,36 @@ function createKeypad(){
       <button class="pad-btn pad-back" data-k="back">⌫</button>
       <button class="pad-btn pad-clear" data-k="clear">Clear</button>
       <button class="pad-btn pad-enter" data-k="enter">Enter</button>
-    </div>
-  `;
+    </div>`;
   host.style.display = "block";
   host.style.pointerEvents = "auto";
   host.querySelectorAll(".pad-btn").forEach(btn=>{
-    btn.addEventListener("pointerdown", (e)=>{
-      e.preventDefault();
-      handleKey(btn.getAttribute("data-k"));
-    }, { passive:false });
+    btn.addEventListener("pointerdown",(e)=>{ e.preventDefault(); handleKey(btn.getAttribute("data-k")); },{passive:false});
   });
 }
-
 function destroyKeypad(){
-  const host = $("answer-pad");
-  if (!host) return;
-  host.innerHTML = "";
-  host.style.display = "";
-  host.style.pointerEvents = "";
+  const host = $("answer-pad"); if(!host) return;
+  host.innerHTML = ""; host.style.display=""; host.style.pointerEvents="";
 }
 
 /* ---------- keyboard ---------- */
 function attachKeyboard(a){
   if (desktopKeyHandler) document.removeEventListener("keydown", desktopKeyHandler);
   desktopKeyHandler = (e)=>{
-    const quiz = $("quiz-container");
-    if (!quiz || quiz.style.display === "none" || ended) return;
-    if (!a || a.style.display === "none") return;
-
+    const quiz = $("quiz-container"); if(!quiz || quiz.style.display==="none" || ended) return;
+    if (!a || a.style.display==="none") return;
     if (/^\d$/.test(e.key)){
       e.preventDefault();
       const cap = getMaxLenForCurrentQuestion();
-      if (a.value.length < cap){
-        a.value += e.key;
-        a.dispatchEvent(new Event("input",{bubbles:true}));
-      }
-      try{ a.setSelectionRange(a.value.length, a.value.length); }catch{}
+      if (a.value.length < cap){ a.value += e.key; a.dispatchEvent(new Event("input",{bubbles:true})); }
+      try{ a.setSelectionRange(a.value.length,a.value.length);}catch{}
     } else if (e.key==="Backspace" || e.key==="Delete"){
-      e.preventDefault();
-      a.value = a.value.slice(0,-1);
-      a.dispatchEvent(new Event("input",{bubbles:true}));
+      e.preventDefault(); a.value = a.value.slice(0,-1); a.dispatchEvent(new Event("input",{bubbles:true}));
     } else if (e.key==="Enter"){
-      e.preventDefault();
-      safeSubmit();
+      e.preventDefault(); safeSubmit();
     }
   };
   document.addEventListener("keydown", desktopKeyHandler);
-
   if (a){
     a.addEventListener("input", ()=>{
       const cap = getMaxLenForCurrentQuestion();
@@ -517,11 +445,14 @@ window.startBronzeBelt = startBronzeBelt;
 window.startSilverBelt = startSilverBelt;
 
 /* ---------- init ---------- */
-// Init
 function initApp(){
   const saved = localStorage.getItem(NAME_KEY);
-  if (saved && document.getElementById("home-username")) document.getElementById("home-username").value = saved;
+  if (saved && $("home-username")) $("home-username").value = saved;
+
+  // Fallback wiring in case onclick is stripped by CSP/templating
+  const miniBtn = $("btn-mini"); if (miniBtn && !miniBtn._wired){ miniBtn._wired = true; miniBtn.addEventListener("click",(e)=>{ e.preventDefault(); goMini(); }); }
+  const ninjaBtn = $("btn-ninja"); if (ninjaBtn && !ninjaBtn._wired){ ninjaBtn._wired = true; ninjaBtn.addEventListener("click",(e)=>{ e.preventDefault(); goNinja(); }); }
+
   setScreen("home-screen");
 }
 window.addEventListener("DOMContentLoaded", initApp);
-
