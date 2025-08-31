@@ -1,6 +1,6 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-35)
-   - NEW Silver Belt: 100Q, 2–12, forms (a×10^k)×(b×10^m)=c and c÷(a×10^k)=(b×10^m)
+   Times Tables Trainer - Script (frontpage-36)
+   - NEW Silver Belt: display expanded factors (no 10^k in UI)
    - Bronze Belt with triple underscores for missing numbers
    - Purple/Red: 2–10, fully mixed
    - Black: 2–12, 100Q, fully mixed
@@ -8,7 +8,7 @@
 
 /******** Google Sheet endpoint (multi-device) ********/
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
-const SHEET_SECRET   = "Banstead123";
+const SHEET_SECRET = "Banstead123";
 
 /********* Offline/refresh-safe queue for submissions *********/
 let pendingSubmissions = JSON.parse(localStorage.getItem("pendingSubmissions") || "[]");
@@ -219,26 +219,23 @@ function buildMixedWithMissing(bases, total, maxFactor = 12, missingRatio = 0.5)
   }
   return shuffle(out);
 }
-/* Silver: (a×10^k)×(b×10^m)=c  OR  c÷(a×10^k)=(b×10^m) */
-
+/* Silver: display expanded factors (A×B) and c ÷ A */
 function buildSilverQuestions(total){
   const bases = [2,3,4,5,6,7,8,9,10,11,12];
   const pow = [0,1];
   const out = [];
-  for (let n=0; n<total; n++){
+  for (let n=0;n<total;n++){
     const a = bases[Math.floor(Math.random()*bases.length)];
     const b = bases[Math.floor(Math.random()*bases.length)];
     const k = pow[Math.floor(Math.random()*pow.length)];
     const m = pow[Math.floor(Math.random()*pow.length)];
-    const A = a * Math.pow(10, k);
-    const B = b * Math.pow(10, m);
-    const c = A * B;
+    const A = a * Math.pow(10, k);  // expanded (e.g., 20)
+    const B = b * Math.pow(10, m);  // expanded (e.g., 300)
+    const c = A * B; // integer
 
     if (Math.random() < 0.5){
-      // multiplication: children solve for c
       out.push({ q:`${A} × ${B}`, a:c });
     } else {
-      // division: c ÷ A = B
       out.push({ q:`${c} ÷ ${A}`, a:B });
     }
   }
