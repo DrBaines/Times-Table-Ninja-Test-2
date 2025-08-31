@@ -1,9 +1,6 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet (frontpage-9)
-   - Adds .answer-echo to mirror input on iOS if readOnly
-   - Ensures input text color is explicit (visibility)
+   Times Tables Trainer - Stylesheet (frontpage-10)
    ========================================================= */
-
 :root{
   --bg: #eef;
   --text: #111827;
@@ -24,7 +21,6 @@
 @media (prefers-reduced-motion: reduce){
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
-
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
@@ -47,7 +43,7 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helve
 .big-input { font-size:44px; padding:18px; width:520px; max-width:92vw; text-align:center; border-radius:12px; border:2px solid #222; background:var(--card); box-shadow:0 6px 14px var(--shadow); }
 .big-input:focus { outline:4px solid var(--focus); outline-offset:3px; }
 
-.big-button { font-size:28px; padding:16px 26px; cursor:pointer; border:2px solid #222; border-radius:12px; background:var(--card); box-shadow:0 6px 14px var(--shadow); }
+.big-button { font-size:28px; padding:16px 26px; cursor:pointer; border:2px solid #222; border-radius:12px; background: var(--card); box-shadow:0 6px 14px var(--shadow); }
 .big-button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .big-button.secondary { background: var(--warn); color: var(--warn-contrast); border-color: var(--warn); }
 .big-button:focus{ outline:4px solid var(--focus); outline-offset:3px; }
@@ -58,20 +54,12 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helve
   font-size:100px; width:340px; text-align:center; margin-top:0;
   border-radius:12px; border:3px solid #111; background: var(--card);
   box-shadow:0 6px 14px var(--shadow);
-  color: var(--text);              /* explicit to avoid platform quirks */
-}
-.answer-input:focus{ outline:4px solid var(--focus); outline-offset:3px; }
-
-/* Echo display (used on iOS when input is readOnly/blurred) */
-.answer-echo{
-  display:none;
-  font-size:100px;
-  width:340px;
-  margin-top:10px;
-  font-weight:700;
-  text-align:center;
   color: var(--text);
 }
+.answer-echo{
+  display:none; font-size:100px; width:340px; margin-top:10px; font-weight:700; text-align:center; color: var(--text);
+}
+.answer-input:focus{ outline:4px solid var(--focus); outline-offset:3px; }
 
 .timer { font-size:50px; margin-top:30px; display:none !important; } /* hidden UI */
 .score { font-size:40px; margin-top:30px; }
@@ -120,8 +108,17 @@ body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helve
 #welcome-user { font-size:28px; margin-bottom:12px; font-weight:normal; color:#333; }
 #hello-user   { font-size:28px; font-weight:normal; color:#333; }
 
+/* Ninja belt cards */
+.belt-grid { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:10px; }
+.belt-card { background: var(--card); border:2px solid #222; border-radius:16px; padding:20px; width:320px; box-shadow:0 8px 18px var(--shadow); }
+.belt-card .belt-name { font-size:28px; font-weight:800; margin-bottom:4px; }
+.belt-card .belt-desc { font-size:20px; color:#333; margin-bottom:8px; }
+.belt-card .belt-meta { font-size:16px; color:#555; margin-bottom:14px; }
+.belt-card.white { border-color:#e5e7eb; }
+
 @media (prefers-color-scheme: dark){
   :root{ --bg:#0b1023; --text:#e5e7eb; --card:#111827; --shadow:rgba(0,0,0,0.4); --key-border:#334155; }
   .info-text{ color:#cbd5e1; }
   .choice, .big-input, .big-button, .answer-input, .calc-pad button{ border-color:#334155; }
+  .belt-card { border-color:#334155; }
 }
