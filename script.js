@@ -1,9 +1,8 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-29)
-   - Purple/Red: no 11× or 12× factors anywhere
-   - Purple/Red/Black: fully mixed question types (×, × reversed, ÷)
-   - Red/Black 100Q; Purple 50Q
-   - 5-minute timer; 5-column answers; Quit to Home
+   Times Tables Trainer - Script (frontpage-31)
+   - NEW Bronze Belt: 100Q, 2–12, fully mixed (normal + missing-number)
+   - Purple/Red: still 2–10, fully mixed
+   - Black: 2–12, 100Q, fully mixed
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -38,7 +37,7 @@ window.addEventListener("DOMContentLoaded", flushQueue);
 /******************** STATE ********************/
 let selectedBase = null;         // Mini: 2..12
 let quizType = 'single';         // 'single' | 'ninja'
-let ninjaName = '';              // e.g., 'Purple Ninja Belt'
+let ninjaName = '';              // e.g., 'Bronze Ninja Belt'
 const QUIZ_TIME = 300;           // 5 minutes
 const MAX_ANSWER_LEN = 4;
 
@@ -51,7 +50,7 @@ let timerStarted = false;
 let ended = false;
 let userAnswers = [];
 let username = "";
-let submitLock = false;          // prevents double-advance
+let submitLock = false;
 let desktopKeyHandler = null;
 
 /******************** DOM GETTERS ********************/
@@ -188,7 +187,7 @@ function block30_single(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
   return [...set1, ...set2, ...set3];
 }
-/* 30 in 3 patterns for mixed baseline (0..12 factors) */
+/* 30 in 3 patterns for mixed baseline */
 function block30_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
@@ -198,7 +197,7 @@ function block30_mixed(bases){
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a3.push({q:`${b*i} ÷ ${b}`, a:i}); }
   return [...a1, ...a2, ...a3];
 }
-/* Extra 20 mixed for 50 total (0..12 factors) */
+/* Extra 20 mixed for 50 total */
 function extra20_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
@@ -212,20 +211,51 @@ function extra20_mixed(bases){
   }
   return out;
 }
-
-/* Generic builder for any total (fully mixed). 
-   maxFactor controls the range of the other multiplicand i: 0..maxFactor.
-   Use maxFactor=10 for "no 11×/12×" belts. */
+/* Generic fully mixed builder (normal only). maxFactor limits other multiplicand. */
 function buildMixedCustom(bases, total, maxFactor = 12){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random() * (maxFactor + 1)); // 0..maxFactor
   const out = [];
   for (let k=0;k<total;k++){
-    const t = Math.floor(Math.random()*3); // 0: i×b, 1: b×i, 2: (b*i)÷b
+    const t = Math.floor(Math.random()*3);
     const b = pick(); const i = r();
     if (t === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
     else if (t === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
     else { out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
+  }
+  return shuffle(out);
+}
+/* NEW: Mixed with missing-number questions */
+function buildMixedWithMissing(bases, total, maxFactor = 12, missingRatio = 0.5){
+  const pick = () => bases[Math.floor(Math.random()*bases.length)];
+  const r = () => Math.floor(Math.random() * (maxFactor + 1)); // 0..maxFactor
+  const out = [];
+  for (let k=0;k<total;k++){
+    const useMissing = Math.random() < missingRatio;
+    const b = pick(); const i = r();             // i is the other multiplicand / quotient
+    if (!useMissing){
+      // normal style
+      const t = Math.floor(Math.random()*3);
+      if (t === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
+      else if (t === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
+      else { out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
+    } else {
+      // missing number forms (answer is the missing value)
+      const t = Math.floor(Math.random()*4);
+      if (t === 0){
+        // _ × b = i*b  -> answer i
+        out.push({ q:`_ × ${b} = ${i*b}`, a:i });
+      } else if (t === 1){
+        // b × _ = i*b  -> answer i
+        out.push({ q:`${b} × _ = ${i*b}`, a:i });
+      } else if (t === 2){
+        // _ ÷ b = i    -> answer i*b
+        out.push({ q:`_ ÷ ${b} = ${i}`, a:i*b });
+      } else {
+        // (b*i) ÷ _ = i  -> answer b
+        out.push({ q:`${b*i} ÷ _ = ${i}`, a:b });
+      }
+    }
   }
   return shuffle(out);
 }
@@ -241,7 +271,7 @@ function startQuiz(){
   preflightAndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
 }
 
-/* Existing 50Q belts (unchanged behaviour) */
+/* Existing 50Q belts */
 function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([3,4]),       `White Ninja Belt`, QUIZ_TIME); }
 function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([4,6]),       `Yellow Ninja Belt`, QUIZ_TIME); }
 function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `Orange Ninja Belt`, QUIZ_TIME); }
@@ -249,10 +279,20 @@ function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  pre
 function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,8]),       `Blue Ninja Belt`, QUIZ_TIME); }
 function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),       `Pink Ninja Belt`, QUIZ_TIME); }
 
-/* NEW belts (fully mixed). Purple/Red exclude 11 and 12 by limiting maxFactor to 10. */
+/* Fully mixed belts */
 function startPurpleBelt(){ quizType='ninja'; ninjaName='Purple Ninja Belt'; preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 50, 10),  `Purple Ninja Belt`, QUIZ_TIME); }
 function startRedBelt(){    quizType='ninja'; ninjaName='Red Ninja Belt';    preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 100, 10), `Red Ninja Belt`, QUIZ_TIME); }
 function startBlackBelt(){  quizType='ninja'; ninjaName='Black Ninja Belt';  preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10,11,12], 100, 12), `Black Ninja Belt`, QUIZ_TIME); }
+
+/* NEW: Bronze Belt (normal + missing-number mixed) */
+function startBronzeBelt(){
+  quizType='ninja'; ninjaName='Bronze Ninja Belt';
+  preflightAndStart(
+    ()=>buildMixedWithMissing([2,3,4,5,6,7,8,9,10,11,12], 100, 12, 0.5),
+    `Bronze Ninja Belt`,
+    QUIZ_TIME
+  );
+}
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
@@ -271,7 +311,7 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
   const welcome=$("welcome-user"); if(welcome) welcome.textContent=welcomeText;
 
-  // 🎨 Set pale background (Mini uses default)
+  // 🎨 Pale background per belt
   const quiz = getQuiz();
   let bg = "#eef";
   if (quizType==="ninja") {
@@ -284,6 +324,7 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
     else if (ninjaName.includes("Purple")) bg = "#ede7f6";
     else if (ninjaName.includes("Red"))    bg = "#ffebee";
     else if (ninjaName.includes("Black"))  bg = "#f5f5f5";
+    else if (ninjaName.includes("Bronze")) bg = "#f3e5d0";
   }
   if (quiz) quiz.style.background = bg;
 
@@ -314,7 +355,6 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
       };
       document.addEventListener('keydown', desktopKeyHandler);
     } else {
-      // iOS path (only if FORCE_DESKTOP=false)
       a.readOnly=true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
       a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
       a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
@@ -370,7 +410,7 @@ function startTimer(){
   timer = setInterval(()=>{
     time--;
     const t=getTimerEl(); const m=Math.floor(time/60), s=time%60;
-    if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`; // hidden by CSS
+    if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
     if (time <= 0) endQuiz();
   }, 1000);
 }
@@ -401,7 +441,6 @@ function endQuiz(){
     const btn = document.getElementById('btn-show-answers'); if (btn) btn.onclick = showAnswers;
   }
 
-  // Submit result
   const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const tableStr = (quizType==='single') ? `${selectedBase}x` : ninjaName;
   const uaSafe = String(navigator.userAgent || '').slice(0, 180);
@@ -456,3 +495,4 @@ window.startPinkBelt   = startPinkBelt;
 window.startPurpleBelt = startPurpleBelt;
 window.startRedBelt    = startRedBelt;
 window.startBlackBelt  = startBlackBelt;
+window.startBronzeBelt = startBronzeBelt;
