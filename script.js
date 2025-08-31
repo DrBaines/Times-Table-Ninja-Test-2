@@ -1,10 +1,11 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-21)
-   - Fixed: fully closed JS (no stray braces) so functions export
-   - Time limit increased to 5 minutes (300s)
-   - 50-question quizzes (30 baseline + 20 mixed)
+   Times Tables Trainer - Script (frontpage-25)
+   - 5 minutes (300s) per quiz
+   - 50 questions (30 baseline + 20 mixed)
+   - Ninja belts with pale quiz background
+   - Answer grid: 5 columns, no numbering
    - Quit: during quiz -> Mini; after quiz -> Home
-   - Keyboard routing & double-submit lock retained
+   - Keyboard entry (Windows/macOS) + on-screen keypad
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -53,6 +54,7 @@ let ended = false;
 let userAnswers = [];
 let username = "";
 let submitLock = false;          // prevents double-advance
+let desktopKeyHandler = null;
 
 /******************** DOM GETTERS ********************/
 const $ = (id) => document.getElementById(id);
@@ -66,7 +68,7 @@ const getMini    = () => $("mini-screen");
 const getNinja   = () => $("ninja-screen");
 const getQuiz    = () => $("quiz-container");
 
-/******************** PLATFORM (force desktop typing unless set otherwise) ********************/
+/******************** PLATFORM (force desktop typing) ********************/
 const FORCE_DESKTOP = true;
 function isIOSLike(){
   if (FORCE_DESKTOP) return false;
@@ -106,7 +108,7 @@ function goMini(){
 }
 function goNinja(){ setUsernameFromHome(); clearResultsUI(); hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja()); }
 
-/* Quit: during quiz -> Mini; after quiz -> Home (index.html button calls this) */
+/* Quit: during quiz -> Mini; after quiz -> Home */
 function quitFromQuiz(){
   if (timer){ clearInterval(timer); timer=null; }
   clearResultsUI();
@@ -164,14 +166,13 @@ function handlePadPress(label){
   }
 }
 
-/******************** SELECTION (Mini) ********************/
+/******************** SELECTION ********************/
 function selectTable(base){
   selectedBase = base;
   TABLES.forEach(b=>{ const el=$(`btn-${b}`); if(el) el.classList.toggle('selected', b===base); });
 }
 
 /******************** QUESTION BUILDERS ********************/
-/* 30-question baseline blocks */
 function block30_single(base){
   const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${i} × ${base}`, a:base*i});
   const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${base} × ${i}`, a:base*i});
@@ -190,8 +191,6 @@ function block30_mixed(bases){
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a3.push({q:`${b*i} ÷ ${b}`, a:i}); }
   return [...a1, ...a2, ...a3];
 }
-
-/* Extra 20 mixed (randomly choose from the same three patterns) */
 function extra20_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
@@ -205,8 +204,6 @@ function extra20_mixed(bases){
   }
   return out;
 }
-
-/* Public builders: now return 50 questions total */
 function buildQuestionsSingle(base){
   const base30 = block30_single(base);
   const extra = extra20_mixed([base]);
@@ -219,48 +216,39 @@ function buildQuestionsMixedBaseline(bases){
 }
 
 /******************** QUIZ FLOW ********************/
-let desktopKeyHandler = null;
-
-function startQuiz(){ // Mini baseline (50/5 min)
+function startQuiz(){ 
   quizType='single';
   if(!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
-  AndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
+  preflightAndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
 }
-
-/* ===== Ninja belts ===== */
-function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  AndStart(()=>buildQuestionsMixedBaseline([3,4]),       `${ninjaName} — 3× & 4× (50Qs / 5 min)`, QUIZ_TIME); }
-function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; AndStart(()=>buildQuestionsMixedBaseline([4,6]),       `${ninjaName} — 4× & 6× (50Qs / 5 min)`, QUIZ_TIME); }
-function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; AndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `${ninjaName} — 2×,3×,4×,5×,6× (50Qs / 5 min)`, QUIZ_TIME); }
-function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  AndStart(()=>buildQuestionsMixedBaseline([4,8]),       `${ninjaName} — 4× & 8× (50Qs / 5 min)`, QUIZ_TIME); }
-function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   AndStart(()=>buildQuestionsMixedBaseline([7,8]),       `${ninjaName} — 7× & 8× (50Qs / 5 min)`, QUIZ_TIME); }
-function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),       `${ninjaName} — 7× & 9× (50Qs / 5 min)`, QUIZ_TIME); }
+function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([3,4]),       `White Ninja Belt`, QUIZ_TIME); }
+function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([4,6]),       `Yellow Ninja Belt`, QUIZ_TIME); }
+function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `Orange Ninja Belt`, QUIZ_TIME); }
+function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([4,8]),       `Green Ninja Belt`, QUIZ_TIME); }
+function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,8]),       `Blue Ninja Belt`, QUIZ_TIME); }
+function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),       `Pink Ninja Belt`, QUIZ_TIME); }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
   if(!username){
-    const name = $('home-username')?.value.trim() || "";
+    const name=$('home-username')?.value.trim() || "";
     if(!name){ alert("Please enter your name on the home page first."); return; }
-    username = name; try{ localStorage.setItem('ttt_username', username); }catch{}
+    username=name; try{ localStorage.setItem('ttt_username', username); }catch{}
   }
 
-  if (timer){ clearInterval(timer); timer = null; }
-  time = timerSeconds;
-  timerStarted = false; ended = false; score = 0; current = 0;
-  userAnswers = []; submitLock = false;
-
-  const t = getTimerEl();
-  const m = Math.floor(time/60), s = time % 60;
-  if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
+  if(timer){ clearInterval(timer); timer=null; }
+  time=timerSeconds; timerStarted=false; ended=false; score=0; current=0; userAnswers=[]; submitLock=false;
+  const t=getTimerEl(); const m=Math.floor(time/60), s=time%60; if(t) t.textContent=`Time left: ${m}:${s<10?"0":""}${s}`;
 
   allQuestions = qBuilder();
 
   hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
-  const welcome = $("welcome-user"); if (welcome) welcome.textContent = welcomeText;
+  const welcome=$("welcome-user"); if(welcome) welcome.textContent=welcomeText;
 
-  /* 🎨 Pale background based on belt (Mini stays default) */
+  // 🎨 Set pale background (Mini uses default)
   const quiz = getQuiz();
-  let bg = "#eef"; // default for Mini tests
-  if (quizType === "ninja") {
+  let bg = "#eef";
+  if (quizType==="ninja") {
     if (ninjaName.includes("White"))  bg = "#fafafa";
     else if (ninjaName.includes("Yellow")) bg = "#fffde7";
     else if (ninjaName.includes("Orange")) bg = "#fff3e0";
@@ -270,26 +258,21 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   }
   if (quiz) quiz.style.background = bg;
 
-  const a = getAnswer();
-  if (a){
-    a.value = ""; a.disabled = false; a.style.display = "inline-block";
-    if (!isiOS){
-      a.readOnly = false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
+  const a=getAnswer();
+  if(a){
+    a.value=""; a.disabled=false; a.style.display="inline-block";
+    if(!isiOS){
+      a.readOnly=false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
       a.addEventListener('input', ()=>{ a.value = a.value.replace(/\D+/g,'').slice(0,MAX_ANSWER_LEN); });
       setTimeout(()=>a.focus(),0);
 
-      // Global routing (single handler)
       desktopKeyHandler = (e)=>{
         const quizVisible = getQuiz() && getQuiz().style.display !== "none";
         if(!quizVisible || ended) return;
         if (!a || a.style.display==="none") return;
-
         if (/^\d$/.test(e.key)){
           e.preventDefault();
-          if (a.value.length < MAX_ANSWER_LEN){
-            a.value += e.key;
-            a.dispatchEvent(new Event('input',{bubbles:true}));
-          }
+          if (a.value.length < MAX_ANSWER_LEN){ a.value += e.key; a.dispatchEvent(new Event('input',{bubbles:true})); }
           try{ a.setSelectionRange(a.value.length, a.value.length); }catch{}
         } else if (e.key==='Backspace' || e.key==='Delete'){
           e.preventDefault();
@@ -302,20 +285,18 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
       };
       document.addEventListener('keydown', desktopKeyHandler);
     } else {
-      // iOS path (only if FORCE_DESKTOP === false)
-      a.readOnly = true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
+      // iOS path (only if FORCE_DESKTOP=false)
+      a.readOnly=true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
       a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
       a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
       a.addEventListener('focus',      preventSoftKeyboard, true);
     }
   }
 
-  const pad = getPadEl(); if (pad){ pad.innerHTML=''; pad.style.display='grid'; }
+  const pad=getPadEl(); if(pad){ pad.innerHTML=''; pad.style.display='grid'; }
   buildKeypadIfNeeded();
-
   showQuestion();
 }
-
 
 function showQuestion(){
   const q=getQEl(); const a=getAnswer();
@@ -336,14 +317,13 @@ function showQuestion(){
   }
 }
 
-/******************** SUBMIT (single entry) & TIMER ********************/
+/******************** SUBMIT & TIMER ********************/
 function safeSubmit(){
   if (submitLock || ended) return;
   submitLock = true;
   handleKey({ key:'Enter' });
   setTimeout(()=>{ submitLock = false; }, 120);
 }
-
 function handleKey(e){
   if (e.key !== "Enter" || ended) return;
   if (!timerStarted){ startTimer(); timerStarted = true; }
@@ -356,7 +336,6 @@ function handleKey(e){
   if (!isNaN(userAns) && userAns === allQuestions[current].a) score++;
   current++; showQuestion();
 }
-
 function startTimer(){
   if (timer) clearInterval(timer);
   timer = setInterval(()=>{
@@ -430,7 +409,6 @@ function showAnswers(){
   s.innerHTML += html;
 }
 
-
 /******************** EXPORTS ********************/
 window.goHome = goHome;
 window.goMini = goMini;
@@ -440,7 +418,6 @@ window.selectTable = selectTable;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
 
-/* Ninja exports */
 window.startWhiteBelt  = startWhiteBelt;
 window.startYellowBelt = startYellowBelt;
 window.startOrangeBelt = startOrangeBelt;
