@@ -1,9 +1,8 @@
-/* Times Tables Trainer — script.js (frontpage-40)
-   Changes in 40:
-   - Fix: keypad is hidden on Home/Mini/Ninja and only shown on the Quiz screen (prevents overlay blocking clicks).
-   - Keeps frontpage-39 features:
-     • Dynamic answer length allows +2 digits beyond correct answer length.
-     • Hidden 5-min timer, keypad, offline queue, and all belt rules preserved.
+/* Times Tables Trainer — script.js (frontpage-41)
+   Changes in 41:
+   - Keypad visibility is controlled via CSS with body[data-screen="..."] so it's GUARANTEED hidden off-quiz.
+   - No inline show/hide for keypad; we set data-screen=home|mini|ninja|quiz-container.
+   - Keeps +2 digit headroom, hidden 5-min timer, offline queue, all belt rules.
 */
 
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
@@ -57,18 +56,18 @@ function syncAnswerMaxLen(){
   if (a.value.length > cap) a.value = a.value.slice(0, cap);
 }
 
-/* ---------- navigation (now also toggles keypad visibility) ---------- */
-function showOnly(id){
+/* ---------- navigation (sets data-screen attribute) ---------- */
+function setScreen(id){
+  // Show the one section we want
   ["home","mini","ninja","quiz-container"].forEach(v=>{
     const el = $(v);
     if (el) el.style.display = (v===id ? "block" : "none");
   });
-  // NEW: show keypad only on quiz screen
-  const k = $("keypad");
-  if (k) k.style.display = (id === "quiz-container" ? "block" : "none");
+  // Drive CSS visibility for keypad etc.
+  document.body.setAttribute("data-screen", id);
 }
 
-function goHome(){ showOnly("home"); }
+function goHome(){ setScreen("home"); }
 function goMini(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
   const nameInput = $("name-input");
@@ -79,7 +78,7 @@ function goMini(){
   const hello = $("mini-hello");
   if (hello) hello.textContent = userName ? `Hello, ${userName}!` : "Hello!";
   buildTableButtons();
-  showOnly("mini");
+  setScreen("mini");
 }
 function goNinja(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
@@ -88,7 +87,7 @@ function goNinja(){
     const val = nameInput.value.trim();
     if (val) { userName = val; localStorage.setItem(NAME_KEY, userName); }
   }
-  showOnly("ninja");
+  setScreen("ninja");
 }
 function quitFromQuiz(){
   teardownQuiz();
@@ -235,7 +234,7 @@ function preflightAndStart(questions, opts={}){
   if (quiz) quiz.setAttribute("data-theme", opts.theme || "");
 
   buildKeypadIfNeeded();
-  showOnly("quiz-container"); // will also show keypad
+  setScreen("quiz-container"); // drives CSS to show keypad
 
   const title = $("quiz-title");
   if (title) title.textContent = modeLabel || "Quiz";
@@ -509,7 +508,6 @@ window.startSilverBelt = startSilverBelt;
 (function init(){
   const saved = localStorage.getItem(NAME_KEY);
   if (saved && $("name-input")) $("name-input").value = saved;
-  // Ensure keypad hidden on first load (home screen)
-  const k = $("keypad");
-  if (k) k.style.display = "none";
+  // Start on home
+  setScreen("home");
 })();
