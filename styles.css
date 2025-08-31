@@ -1,5 +1,5 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet (frontpage-35)
+   Times Tables Trainer - Stylesheet (frontpage-36)
    ========================================================= */
 
 /* Base layout */
@@ -227,7 +227,6 @@ body {
 .belt-card.red    { background: #ef9a9a; }
 .belt-card.black  { background: #e0e0e0; }
 .belt-card.bronze { background: #e7c9a6; }
-/* NEW: Silver */
 .belt-card.silver { background: #d9d9d9; }
 
 .belt-card .belt-name { color: #111; }
