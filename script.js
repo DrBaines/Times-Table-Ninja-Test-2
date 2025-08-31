@@ -1,28 +1,24 @@
-/* Times Tables Trainer — script.js (frontpage-38)
-   - Dynamic answer length: BASE_MAX_ANSWER_LEN = 4, but Silver expands to the needed length per question.
-   - Hidden 5 min timer (300s) for all quizzes by default.
-   - On-screen keypad with pointer events; hardware keyboard works (digits, Backspace/Delete, Enter).
-   - Offline-safe queue to Google Apps Script using no-cors+Blob; flush on online/visibility.
-   - All functions used by onclick handlers are exported to window.*
+/* Times Tables Trainer — script.js (frontpage-39)
+   Changes in 39:
+   - Dynamic answer length now allows +2 extra digits beyond the correct answer length.
+   - Everything else preserved from 38 (hidden 5-min timer, keypad, offline queue, belts).
 */
 
-/* -----------------------------
-   Constants & state
-------------------------------*/
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
 const SHEET_SECRET   = "Banstead123";
 
-const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes, hidden timer
-const BASE_MAX_ANSWER_LEN  = 4;   // most modes fit ≤ 4 digits; Silver expands dynamically
+const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes
+const BASE_MAX_ANSWER_LEN  = 4;   // most modes fit ≤ 4 digits
+const EXTRA_DIGITS_ALLOWED = 2;   // NEW: allow +2 beyond correct answer length
 const QUEUE_KEY            = "tttQueueV1";
 const NAME_KEY             = "tttName";
 
 let userName = "";
-let modeLabel = "";       // e.g., "Mini 7×", "White Belt"
+let modeLabel = "";
 let quizSeconds = QUIZ_SECONDS_DEFAULT;
 
-let allQuestions = [];    // [{ q: "3 × 4", a: 12 }, ...] (a is Number)
-let userAnswers = [];     // [12, "", 7, ...] (string or number, we compare numerically in grading)
+let allQuestions = [];
+let userAnswers = [];
 let currentIndex = 0;
 let ended = false;
 
@@ -30,55 +26,28 @@ let timerInterval = null;
 let timerDeadline = 0;
 
 let desktopKeyHandler = null;
-let submitLockedUntil = 0; // double-submit guard
+let submitLockedUntil = 0; // anti double-submit
 
-/* -----------------------------
-   Utilities
-------------------------------*/
+/* ---------- utils ---------- */
 function $(id){ return document.getElementById(id); }
+function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function cryptoRandom(){ return String(Date.now())+"-"+Math.floor(Math.random()*1e9); }
+function hashDJB2(s){ let h=5381; for(let i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i); h|=0;} return h>>>0; }
 
-function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-
-function shuffle(arr){
-  for (let i = arr.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function randInt(min, max){ // inclusive
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function cryptoRandom(){
-  // Simple random id (not crypto for real, but fine for dedupe)
-  return String(Date.now()) + "-" + Math.floor(Math.random()*1e9);
-}
-
-function hashDJB2(s){
-  let h = 5381;
-  for (let i=0; i<s.length; i++){
-    h = ((h << 5) + h) + s.charCodeAt(i);
-    h |= 0;
-  }
-  return h >>> 0;
-}
-
-/* -----------------------------
-   Dynamic max length by question
-------------------------------*/
+/* ---------- dynamic max length (with +2 headroom) ---------- */
 function getMaxLenForCurrentQuestion(){
   try{
     const q = allQuestions[currentIndex];
     if (!q || typeof q.a === "undefined") return BASE_MAX_ANSWER_LEN;
     const ansLen = String(q.a).length;
-    return Math.max(BASE_MAX_ANSWER_LEN, ansLen);
+    // Allow children to make an error like an extra zero: +2 headroom
+    return Math.max(BASE_MAX_ANSWER_LEN, ansLen + EXTRA_DIGITS_ALLOWED);
   }catch{
     return BASE_MAX_ANSWER_LEN;
   }
 }
-
 function syncAnswerMaxLen(){
   const a = $("answer");
   if (!a) return;
@@ -87,21 +56,14 @@ function syncAnswerMaxLen(){
   if (a.value.length > cap) a.value = a.value.slice(0, cap);
 }
 
-/* -----------------------------
-   Screen navigation
-   (Assumes sections with IDs: home, mini, ninja, quiz-container)
-------------------------------*/
+/* ---------- navigation ---------- */
 function showOnly(id){
   ["home","mini","ninja","quiz-container"].forEach(v=>{
     const el = $(v);
     if (el) el.style.display = (v===id ? "block" : "none");
   });
 }
-
-function goHome(){
-  showOnly("home");
-}
-
+function goHome(){ showOnly("home"); }
 function goMini(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
   const nameInput = $("name-input");
@@ -114,7 +76,6 @@ function goMini(){
   buildTableButtons();
   showOnly("mini");
 }
-
 function goNinja(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
   const nameInput = $("name-input");
@@ -124,17 +85,13 @@ function goNinja(){
   }
   showOnly("ninja");
 }
-
 function quitFromQuiz(){
   teardownQuiz();
   goHome();
 }
 
-/* -----------------------------
-   Mini tests UI
-------------------------------*/
+/* ---------- mini tests ---------- */
 let selectedBase = 2;
-
 function buildTableButtons(){
   const wrap = $("mini-buttons");
   if (!wrap) return;
@@ -144,82 +101,33 @@ function buildTableButtons(){
   }
   wrap.innerHTML = html;
 }
-
-function selectTable(b){
-  selectedBase = clamp(b,2,12);
-}
-
+function selectTable(b){ selectedBase = clamp(b,2,12); }
 function startQuiz(){
   modeLabel = `Mini ${selectedBase}×`;
   quizSeconds = QUIZ_SECONDS_DEFAULT;
   preflightAndStart(buildMiniQuestions(selectedBase, 50));
 }
 
-/* -----------------------------
-   Ninja belts — start functions
-------------------------------*/
+/* ---------- belts ---------- */
 function startWhiteBelt(){
   modeLabel = "White Belt";
   quizSeconds = QUIZ_SECONDS_DEFAULT;
-  const qs = buildBeltMixStructured([3,4], 50); // like mini (30 structured + 20 mixed)
+  const qs = buildBeltMixStructured([3,4], 50);
   preflightAndStart(qs, { theme: "white" });
 }
-function startYellowBelt(){
-  modeLabel = "Yellow Belt";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildMixedBases([4,6], 50), { theme: "yellow" });
-}
-function startOrangeBelt(){
-  modeLabel = "Orange Belt (2x – 6x)";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildMixedBases([2,3,4,5,6], 50), { theme: "orange" });
-}
-function startGreenBelt(){
-  modeLabel = "Green Belt";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildMixedBases([4,8], 50), { theme: "green" });
-}
-function startBlueBelt(){
-  modeLabel = "Blue Belt";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildMixedBases([7,8], 50), { theme: "blue" });
-}
-function startPinkBelt(){
-  modeLabel = "Pink Belt";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildMixedBases([7,9], 50), { theme: "pink" });
-}
-function startPurpleBelt(){
-  modeLabel = "Purple Belt (2×–10×)";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildFullyMixed(50, { min:2, max:10 }), { theme: "purple" });
-}
-function startRedBelt(){
-  modeLabel = "Red Belt (2×–10×, 100 Q)";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildFullyMixed(100, { min:2, max:10 }), { theme: "red" });
-}
-function startBlackBelt(){
-  modeLabel = "Black Belt (2×–12×, 100 Q)";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildFullyMixed(100, { min:2, max:12 }), { theme: "black" });
-}
-function startBronzeBelt(){
-  modeLabel = "Bronze Belt (2×–12× + blanks, 100 Q)";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildBronzeQuestions(100), { theme: "bronze" });
-}
-function startSilverBelt(){
-  modeLabel = "Silver Belt (2×–12×, powers of 10, 100 Q)";
-  quizSeconds = QUIZ_SECONDS_DEFAULT;
-  preflightAndStart(buildSilverQuestions(100), { theme: "silver" });
-}
+function startYellowBelt(){ modeLabel="Yellow Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,6],50), {theme:"yellow"}); }
+function startOrangeBelt(){ modeLabel="Orange Belt (2x – 6x)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([2,3,4,5,6],50), {theme:"orange"}); }
+function startGreenBelt(){ modeLabel="Green Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,8],50), {theme:"green"}); }
+function startBlueBelt(){ modeLabel="Blue Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,8],50), {theme:"blue"}); }
+function startPinkBelt(){ modeLabel="Pink Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,9],50), {theme:"pink"}); }
+function startPurpleBelt(){ modeLabel="Purple Belt (2×–10×)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(50,{min:2,max:10}), {theme:"purple"}); }
+function startRedBelt(){ modeLabel="Red Belt (2×–10×, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:10}), {theme:"red"}); }
+function startBlackBelt(){ modeLabel="Black Belt (2×–12×, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:12}), {theme:"black"}); }
+function startBronzeBelt(){ modeLabel="Bronze Belt (2×–12× + blanks, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBronzeQuestions(100), {theme:"bronze"}); }
+function startSilverBelt(){ modeLabel="Silver Belt (2×–12×, powers of 10, 100 Q)"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildSilverQuestions(100), {theme:"silver"}); }
 
-/* -----------------------------
-   Question builders
-------------------------------*/
+/* ---------- question builders ---------- */
 function buildMiniQuestions(base, total){
-  // 50 Q: 10 "i × base", 10 "base × i", 10 "(base×i) ÷ base", 20 random mix of those
   const out = [];
   for (let i=1;i<=10;i++) out.push({ q:`${i} × ${base}`, a:i*base });
   for (let i=1;i<=10;i++) out.push({ q:`${base} × ${i}`, a:base*i });
@@ -234,10 +142,7 @@ function buildMiniQuestions(base, total){
   }
   return out.concat(shuffle(mix));
 }
-
-// Structured like mini (30 structured + 20 mixed across those bases)
-function buildBeltMixStructured(bases, total){
-  // 30 structured (for each chosen base, 10+10+10), then 20 mixed drawn across bases
+function buildBeltMixStructured(bases,total){
   const out = [];
   for (const base of bases){
     for (let i=1;i<=10;i++) out.push({ q:`${i} × ${base}`, a:i*base });
@@ -254,11 +159,9 @@ function buildBeltMixStructured(bases, total){
     else if (t===2) mix.push({ q:`${base} × ${k}`, a:base*k });
     else mix.push({ q:`${base*k} ÷ ${base}`, a:k });
   }
-  return out.concat(shuffle(mix)).slice(0, total);
+  return out.concat(shuffle(mix)).slice(0,total);
 }
-
-// Even sampling across provided bases, then shuffle
-function buildMixedBases(bases, total){
+function buildMixedBases(bases,total){
   const out = [];
   for (let i=0;i<total;i++){
     const base = bases[i % bases.length];
@@ -270,13 +173,11 @@ function buildMixedBases(bases, total){
   }
   return shuffle(out);
 }
-
-// Fully mixed 2..max (a×b, b×a, (a×b)÷a), with integer answers
 function buildFullyMixed(total, range){
   const out = [];
-  for (let n=0; n<total; n++){
+  for (let n=0;n<total;n++){
     const a = randInt(range.min, range.max);
-    const b = randInt(1, 10);
+    const b = randInt(1,10);
     const t = randInt(1,3);
     if (t===1) out.push({ q:`${a} × ${b}`, a:a*b });
     else if (t===2) out.push({ q:`${b} × ${a}`, a:b*a });
@@ -284,8 +185,6 @@ function buildFullyMixed(total, range){
   }
   return shuffle(out);
 }
-
-// Bronze: like Black (2–12, 100 Q) with blanks ___ mixed in
 function buildBronzeQuestions(total){
   const out = [];
   for (let n=0;n<total;n++){
@@ -302,66 +201,46 @@ function buildBronzeQuestions(total){
   }
   return shuffle(out);
 }
-
-// Silver: expanded powers of 10 (A×B) or c÷A=B with k,m ∈ {0,1}
 function buildSilverQuestions(total){
   const bases = [2,3,4,5,6,7,8,9,10,11,12];
   const pow = [0,1];
   const out = [];
-  for (let n=0; n<total; n++){
+  for (let n=0;n<total;n++){
     const a = bases[Math.floor(Math.random()*bases.length)];
     const b = bases[Math.floor(Math.random()*bases.length)];
     const k = pow[Math.floor(Math.random()*pow.length)];
     const m = pow[Math.floor(Math.random()*pow.length)];
-    const A = a * Math.pow(10, k);  // e.g., 20
-    const B = b * Math.pow(10, m);  // e.g., 300
+    const A = a * Math.pow(10, k);
+    const B = b * Math.pow(10, m);
     const c = A * B;
-
-    if (Math.random() < 0.5){
-      out.push({ q: `${A} × ${B}`, a: c });
-    } else {
-      out.push({ q: `${c} ÷ ${A}`, a: B });
-    }
+    if (Math.random() < 0.5) out.push({ q:`${A} × ${B}`, a:c });
+    else out.push({ q:`${c} ÷ ${A}`, a:B });
   }
   return shuffle(out);
 }
 
-/* -----------------------------
-   Quiz lifecycle
-------------------------------*/
+/* ---------- quiz flow ---------- */
 function preflightAndStart(questions, opts={}){
   ended = false;
   currentIndex = 0;
-  allQuestions = questions.slice(); // copy
+  allQuestions = questions.slice();
   userAnswers = new Array(allQuestions.length).fill("");
 
-  // Theme background for belt pages (pale colour via body class or attribute)
   const quiz = $("quiz-container");
-  if (quiz){
-    quiz.setAttribute("data-theme", opts.theme || "");
-  }
+  if (quiz) quiz.setAttribute("data-theme", opts.theme || "");
 
-  // Build keypad if needed
   buildKeypadIfNeeded();
-
-  // Show quiz screen
   showOnly("quiz-container");
 
-  // Render header
   const title = $("quiz-title");
   if (title) title.textContent = modeLabel || "Quiz";
 
-  // Reset answer field and first question
   showQuestion();
-
-  // Start (hidden) timer
   startTimer(quizSeconds);
 
-  // Attach desktop keyboard handler
   const a = $("answer");
   attachKeyboard(a);
 }
-
 function showQuestion(){
   const q = allQuestions[currentIndex];
   const qEl = $("question");
@@ -369,22 +248,16 @@ function showQuestion(){
   if (qEl) qEl.textContent = q ? q.q : "";
   if (aEl){
     aEl.value = "";
-    syncAnswerMaxLen(); // dynamic cap based on correct answer length
-    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); } catch {}
+    syncAnswerMaxLen();
+    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
   }
-  // Update progress text if present
   const p = $("progress");
   if (p) p.textContent = `${currentIndex+1} / ${allQuestions.length}`;
 }
-
 function handleKey(val){
   const a = $("answer");
   if (!a || ended) return;
-
-  if (val === "enter"){
-    safeSubmit();
-    return;
-  }
+  if (val === "enter"){ safeSubmit(); return; }
   if (val === "back"){
     a.value = a.value.slice(0,-1);
     a.dispatchEvent(new Event("input",{bubbles:true}));
@@ -396,7 +269,6 @@ function handleKey(val){
     a.dispatchEvent(new Event("input",{bubbles:true}));
     return;
   }
-  // digits
   if (/^\d$/.test(val)){
     const cap = getMaxLenForCurrentQuestion();
     if (a.value.length < cap){
@@ -406,67 +278,50 @@ function handleKey(val){
     }
   }
 }
-
 function safeSubmit(){
   const now = Date.now();
   if (now < submitLockedUntil) return;
-  submitLockedUntil = now + 200; // anti double-submit tap
+  submitLockedUntil = now + 200;
 
   const a = $("answer");
   if (!a || ended) return;
-
   const valStr = a.value.trim();
   userAnswers[currentIndex] = (valStr === "") ? "" : Number(valStr);
 
   currentIndex++;
-  if (currentIndex >= allQuestions.length){
-    endQuiz();
-    return;
-  }
+  if (currentIndex >= allQuestions.length){ endQuiz(); return; }
   showQuestion();
 }
-
 function startTimer(seconds){
   clearInterval(timerInterval);
   timerDeadline = Date.now() + seconds*1000;
   timerInterval = setInterval(()=>{
     const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now())/1000));
-    // update hidden timer element if you have one
     const t = $("timer");
     if (t) t.textContent = String(remaining);
-    if (remaining <= 0){
-      clearInterval(timerInterval);
-      endQuiz();
-    }
+    if (remaining <= 0){ clearInterval(timerInterval); endQuiz(); }
   }, 250);
 }
-
 function teardownQuiz(){
   clearInterval(timerInterval);
   timerInterval = null;
   ended = true;
   submitLockedUntil = 0;
-  // detach keyboard
   if (desktopKeyHandler){
     document.removeEventListener("keydown", desktopKeyHandler);
     desktopKeyHandler = null;
   }
 }
 
-/* -----------------------------
-   End & answers
-------------------------------*/
+/* ---------- end & answers ---------- */
 function endQuiz(){
   teardownQuiz();
-
-  // grade
   let correct = 0;
   for (let i=0;i<allQuestions.length;i++){
     const c = Number(allQuestions[i].a);
     const u = (userAnswers[i]==="" ? NaN : Number(userAnswers[i]));
     if (!Number.isNaN(u) && u===c) correct++;
   }
-
   const s = $("score");
   if (s){
     s.innerHTML = `
@@ -477,8 +332,6 @@ function endQuiz(){
       <button class="btn" onclick="quitFromQuiz()">Quit</button>
     `;
   }
-
-  // submit data (queued)
   try{
     queueResult({
       secret: SHEET_SECRET,
@@ -491,7 +344,6 @@ function endQuiz(){
     flushQueue();
   }catch(e){}
 }
-
 function showAnswers(){
   const s = $("score"); if(!s) return;
   let html = `
@@ -515,13 +367,11 @@ function showAnswers(){
   s.innerHTML += html;
 }
 
-/* -----------------------------
-   Keypad & keyboard
-------------------------------*/
+/* ---------- keypad & keyboard ---------- */
 function buildKeypadIfNeeded(){
   const k = $("keypad");
   if (!k) return;
-  // 4×4 grid with tall Enter on the right, 0 wide at bottom
+  // Fixed-position keypad UI is styled in CSS; we only fill the buttons here.
   k.innerHTML = `
     <div class="pad">
       <button class="pad-btn" data-k="7">7</button>
@@ -545,16 +395,13 @@ function buildKeypadIfNeeded(){
       <button class="pad-btn pad-enter" data-k="enter">Enter</button>
     </div>
   `;
-  // pointerdown only; prevent default to avoid double input
   k.querySelectorAll(".pad-btn").forEach(btn=>{
     btn.addEventListener("pointerdown", (e)=>{
       e.preventDefault();
-      const v = btn.getAttribute("data-k");
-      handleKey(v);
+      handleKey(btn.getAttribute("data-k"));
     }, { passive:false });
   });
 }
-
 function attachKeyboard(a){
   if (desktopKeyHandler) document.removeEventListener("keydown", desktopKeyHandler);
   desktopKeyHandler = (e)=>{
@@ -581,7 +428,6 @@ function attachKeyboard(a){
   };
   document.addEventListener("keydown", desktopKeyHandler);
 
-  // Enforce dynamic cap on paste/IME
   if (a){
     a.addEventListener("input", ()=>{
       const cap = getMaxLenForCurrentQuestion();
@@ -590,26 +436,16 @@ function attachKeyboard(a){
   }
 }
 
-/* -----------------------------
-   Offline queue → Google Sheet
-------------------------------*/
+/* ---------- offline queue ---------- */
 function queueResult(item){
   const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
   const body = JSON.stringify(item);
-  const rec = {
-    id: cryptoRandom(),
-    idempotency: hashDJB2(body),
-    body,
-    ts: Date.now()
-  };
+  const rec = { id: cryptoRandom(), idempotency: hashDJB2(body), body, ts: Date.now() };
   if (!q.some(r=>r.idempotency===rec.idempotency)) q.push(rec);
   while (q.length > 200) q.shift();
   localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
 }
-
-let flushing = false;
-let backoffMs = 0;
-
+let flushing = false, backoffMs = 0;
 async function flushQueue(){
   if (flushing) return;
   let q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
@@ -617,7 +453,7 @@ async function flushQueue(){
   flushing = true;
   try{
     const next = q[0];
-    const blob = new Blob([next.body], { type: "application/json" });
+    const blob = new Blob([next.body], { type:"application/json" });
     await fetch(SHEET_ENDPOINT, { method:"POST", mode:"no-cors", body: blob });
     q.shift();
     localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
@@ -628,19 +464,12 @@ async function flushQueue(){
     flushing = false;
   }
   q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
-  if (q.length){
-    setTimeout(flushQueue, backoffMs || 0);
-  }
+  if (q.length) setTimeout(flushQueue, backoffMs || 0);
 }
-
-document.addEventListener("visibilitychange", ()=>{
-  if (document.visibilityState === "visible") flushQueue();
-});
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible") flushQueue(); });
 window.addEventListener("online", flushQueue);
 
-/* -----------------------------
-   Exports for onclicks
-------------------------------*/
+/* ---------- exports ---------- */
 window.goHome = goHome;
 window.goMini = goMini;
 window.goNinja = goNinja;
@@ -672,9 +501,7 @@ window.startBlackBelt  = startBlackBelt;
 window.startBronzeBelt = startBronzeBelt;
 window.startSilverBelt = startSilverBelt;
 
-/* -----------------------------
-   Init small niceties (optional)
-------------------------------*/
+/* ---------- init ---------- */
 (function init(){
   const saved = localStorage.getItem(NAME_KEY);
   if (saved && $("name-input")) $("name-input").value = saved;
