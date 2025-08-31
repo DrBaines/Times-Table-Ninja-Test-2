@@ -1,7 +1,7 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-11)
+   Times Tables Trainer - Script (frontpage-12)
    - White Ninja Belt: mixed 3× & 4× in Baseline format (30Q / 90s)
-   - Fix: ensure desktop typing works; iOS echo only
+   - Ensures 30 questions (not 12) and proper cache-bust
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -47,8 +47,8 @@ let mode = 'baseline';           // 'baseline' | 'tester' (Mini only)
 let quizType = 'single';         // 'single' | 'ninja'
 let ninjaName = '';              // e.g., 'White Ninja Belt'
 let ninjaBases = [];             // e.g., [3,4]
-const NINJA_QUESTIONS = 30;      // Baseline format: 30
-const NINJA_TIME = 90;           // Baseline time: 90s
+const NINJA_QUESTIONS = 30;      // Baseline: 30
+const NINJA_TIME = 90;           // Baseline time
 
 let allQuestions = [];
 let current = 0;
@@ -163,8 +163,8 @@ function buildKeypadIfNeeded(){
     a.addEventListener('keydown', (e) => {
       const ok = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'];
       if (ok.includes(e.key)) return;
-      if (!/^\\d$/.test(e.key)) e.preventDefault();
-      if (/^\\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
+      if (!/^\d$/.test(e.key)) e.preventDefault();
+      if (/^\d$/.test(e.key) && a.value.length>=MAX_ANSWER_LEN) e.preventDefault();
     });
     hasAnswerKeydownHandler = true;
   }
@@ -224,7 +224,7 @@ function startWhiteBelt(){ // Ninja: White (3 & 4 mixed, baseline style)
   quizType = 'ninja';
   ninjaName = 'White Ninja Belt';
   ninjaBases = [3,4];
-  preflightAndStart(buildQuestionsMixedBaseline34, `${ninjaName} — 3× & 4×`, NINJA_TIME);
+  preflightAndStart(buildQuestionsMixedBaseline34, `${ninjaName} — 3× & 4× (30Qs / 90s)`, NINJA_TIME);
 }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
