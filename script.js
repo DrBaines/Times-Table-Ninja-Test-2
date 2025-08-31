@@ -1,13 +1,13 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-18)
-   - Fix: no more skipped questions (single Enter handler + submit lock)
-   - Mini = baseline only (30Q/90s), White Ninja Belt (3&4) = 30Q/90s
+   Times Tables Trainer - Script (frontpage-19)
+   - Quit button: during quiz -> Mini; AFTER quiz -> Home
+   - Ninja Belts added: White, Yellow, Orange, Green, Blue, Pink
+   - Keyboard fixes retained (no skipped questions)
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
 const SHEET_SECRET   = "Banstead123";
-/******************************************************/
 
 /********* Offline/refresh-safe queue for submissions *********/
 let pendingSubmissions = JSON.parse(localStorage.getItem("pendingSubmissions") || "[]");
@@ -37,7 +37,7 @@ window.addEventListener("DOMContentLoaded", flushQueue);
 /******************** STATE ********************/
 let selectedBase = null;         // Mini: 2..12
 let quizType = 'single';         // 'single' | 'ninja'
-let ninjaName = '';              // 'White Ninja Belt'
+let ninjaName = '';              // e.g., 'White Ninja Belt'
 const QUIZ_TIME = 90;            // seconds
 const MAX_ANSWER_LEN = 4;
 
@@ -53,8 +53,6 @@ let username = "";
 
 /* submit lock to prevent double-advance */
 let submitLock = false;
-
-const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 
 /******************** DOM GETTERS ********************/
 const $ = (id) => document.getElementById(id);
@@ -107,9 +105,17 @@ function goMini(){
   clearResultsUI(); hide(getHome()); hide(getNinja()); hide(getQuiz()); show(getMini());
 }
 function goNinja(){ setUsernameFromHome(); clearResultsUI(); hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja()); }
-function quitToMini(){ if (timer){ clearInterval(timer); timer=null; } clearResultsUI(); hide(getQuiz()); show(getMini()); }
+
+/* NEW: Quit behaviour depends on whether quiz has ended */
+function quitFromQuiz(){
+  if (timer){ clearInterval(timer); timer=null; }
+  clearResultsUI();
+  hide(getQuiz());
+  if (ended) { show(getHome()); } else { show(getMini()); }
+}
 
 /******************** UI BUILDERS ********************/
+const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
 function buildTableButtons(){
   const container = $('table-choices'); if (!container) return;
   container.innerHTML = '';
@@ -174,8 +180,11 @@ function buildQuestionsSingle(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
   return [...set1, ...set2, ...set3];
 }
-function buildQuestionsMixedBaseline34(){
-  const bases=[3,4], pick=()=>bases[Math.floor(Math.random()*bases.length)], r=()=>Math.floor(Math.random()*13);
+
+/* Generic baseline-style mixed builder for any set of bases */
+function buildQuestionsMixedBaseline(bases){
+  const pick = () => bases[Math.floor(Math.random()*bases.length)];
+  const r = () => Math.floor(Math.random()*13); // 0..12
   const a1=[], a2=[], a3=[];
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a1.push({q:`${i} × ${b}`, a:i*b}); }
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a2.push({q:`${b} × ${i}`, a:i*b}); }
@@ -186,15 +195,19 @@ function buildQuestionsMixedBaseline34(){
 /******************** QUIZ FLOW ********************/
 let desktopKeyHandler = null;
 
-function startQuiz(){ // Mini baseline (30/90)
+function startQuiz(){ // Mini baseline
   quizType='single';
   if(!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
   preflightAndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
 }
-function startWhiteBelt(){ // Ninja: 3 & 4 baseline (30/90)
-  quizType='ninja'; ninjaName='White Ninja Belt';
-  preflightAndStart(buildQuestionsMixedBaseline34, `${ninjaName} — 3× & 4× (30Qs / 90s)`, QUIZ_TIME);
-}
+
+/* ===== Ninja belts ===== */
+function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([3,4]),      `${ninjaName} — 3× & 4× (30Qs / 90s)`, QUIZ_TIME); }
+function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([4,6]),      `${ninjaName} — 4× & 6× (30Qs / 90s)`, QUIZ_TIME); }
+function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]),`${ninjaName} — 2×,3×,4×,5×,6× (30Qs / 90s)`, QUIZ_TIME); }
+function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([4,8]),      `${ninjaName} — 4× & 8× (30Qs / 90s)`, QUIZ_TIME); }
+function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,8]),      `${ninjaName} — 7× & 8× (30Qs / 90s)`, QUIZ_TIME); }
+function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),      `${ninjaName} — 7× & 9× (30Qs / 90s)`, QUIZ_TIME); }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
@@ -205,7 +218,7 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   }
 
   if(timer){ clearInterval(timer); timer=null; }
-  time=timerSeconds; timerStarted=false; ended=false; score=0; current=0; userAnswers=[];
+  time=timerSeconds; timerStarted=false; ended=false; score=0; current=0; userAnswers=[]; submitLock=false;
   const t=getTimerEl(); const m=Math.floor(time/60), s=time%60; if(t) t.textContent=`Time left: ${m}:${s<10?"0":""}${s}`;
 
   allQuestions = qBuilder();
@@ -221,7 +234,7 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
       a.addEventListener('input', ()=>{ a.value = a.value.replace(/\D+/g,'').slice(0,MAX_ANSWER_LEN); });
       setTimeout(()=>a.focus(),0);
 
-      // Global routing (single source of truth) — no input keydown handler
+      // Global routing (single handler)
       desktopKeyHandler = (e)=>{
         const quizVisible = getQuiz() && getQuiz().style.display !== "none";
         if(!quizVisible || ended) return;
@@ -280,7 +293,6 @@ function safeSubmit(){
   if (submitLock || ended) return;
   submitLock = true;
   handleKey({ key:'Enter' });
-  // small window to swallow repeats/doubles from event bubbling or key repeat
   setTimeout(()=>{ submitLock = false; }, 120);
 }
 
@@ -311,6 +323,7 @@ function startTimer(){
 function endQuiz(){
   if (ended) return; ended = true;
   if (timer){ clearInterval(timer); timer=null; }
+
   if (desktopKeyHandler){ document.removeEventListener('keydown', desktopKeyHandler); desktopKeyHandler=null; }
 
   const q=getQEl(), a=getAnswer(), t=getTimerEl(), pad=getPadEl(), s=getScoreEl();
@@ -332,8 +345,10 @@ function endQuiz(){
     const btn = document.getElementById('btn-show-answers'); if (btn) btn.onclick = showAnswers;
   }
 
+  // Note: Quit button now returns Home after end (handled by quitFromQuiz)
+  // Submit result
   const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const tableStr = (quizType==='single') ? `${selectedBase}x` : `White Ninja Belt (3&4)`;
+  const tableStr = (quizType==='single') ? `${selectedBase}x` : ninjaName;
   const uaSafe = String(navigator.userAgent || '').slice(0, 180);
   const payload = { id:submissionId, secret:SHEET_SECRET, table:tableStr, name:username,
                     score, asked, total, date:new Date().toISOString(), device:uaSafe };
@@ -361,8 +376,15 @@ function showAnswers(){
 window.goHome = goHome;
 window.goMini = goMini;
 window.goNinja = goNinja;
-window.quitToMini = quitToMini;
+window.quitFromQuiz = quitFromQuiz;
 window.selectTable = selectTable;
 window.startQuiz   = startQuiz;
 window.handleKey   = handleKey;
-window.startWhiteBelt = startWhiteBelt;
+
+/* Ninja exports */
+window.startWhiteBelt  = startWhiteBelt;
+window.startYellowBelt = startYellowBelt;
+window.startOrangeBelt = startOrangeBelt;
+window.startGreenBelt  = startGreenBelt;
+window.startBlueBelt   = startBlueBelt;
+window.startPinkBelt   = startPinkBelt;
