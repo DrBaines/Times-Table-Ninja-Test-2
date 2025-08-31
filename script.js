@@ -244,10 +244,10 @@ function buildMixedWithMissing(bases, total, maxFactor = 12, missingRatio = 0.5)
       const t = Math.floor(Math.random()*4);
       if (t === 0){
         // _ × b = i*b  -> answer i
-         out.push({ q:`____ × ${b} = ${i*b}`, a:i });
-         out.push({ q:`${b} × ____ = ${i*b}`, a:i });
-         out.push({ q:`____ ÷ ${b} = ${i}`, a:i*b });
-         out.push({ q:`${b*i} ÷ ____ = ${i}`, a:b });
+         out.push({ q:`___ × ${b} = ${i*b}`, a:i });
+         out.push({ q:`${b} × ___ = ${i*b}`, a:i });
+         out.push({ q:`___ ÷ ${b} = ${i}`, a:i*b });
+         out.push({ q:`${b*i} ÷ ___ = ${i}`, a:b });
       }
     }
   }
