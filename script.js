@@ -1,7 +1,7 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-10)
-   - Adds White Ninja Belt (mixed 3× & 4×) in same quiz format
-   - Keeps hidden timer, keypad, review, Sheets submission
+   Times Tables Trainer - Script (frontpage-11)
+   - White Ninja Belt: mixed 3× & 4× in Baseline format (30Q / 90s)
+   - Fix: ensure desktop typing works; iOS echo only
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -42,13 +42,13 @@ window.addEventListener("pagehide", () => {
 window.addEventListener("DOMContentLoaded", flushQueue);
 
 /******************** STATE ********************/
-let selectedBase = null;      // for Mini: 2..12
-let mode = 'baseline';        // 'baseline' | 'tester' (Mini only)
-let quizType = 'single';      // 'single' | 'ninja'
-let ninjaName = '';           // e.g., 'White Ninja Belt'
-let ninjaBases = [];          // e.g., [3,4]
-const NINJA_QUESTIONS = 12;
-const NINJA_TIME = 45;
+let selectedBase = null;         // for Mini: 2..12
+let mode = 'baseline';           // 'baseline' | 'tester' (Mini only)
+let quizType = 'single';         // 'single' | 'ninja'
+let ninjaName = '';              // e.g., 'White Ninja Belt'
+let ninjaBases = [];             // e.g., [3,4]
+const NINJA_QUESTIONS = 30;      // Baseline format: 30
+const NINJA_TIME = 90;           // Baseline time: 90s
 
 let allQuestions = [];
 let current = 0;
@@ -194,26 +194,23 @@ function buildQuestionsSingle(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,perSet);
   return [...set1, ...set2, ...set3];
 }
-function buildQuestionsMixed(bases, total=NINJA_QUESTIONS){
-  const perTypePerBase = Math.max(1, Math.floor(total / (bases.length * 3))); // spread across mul1, mul2, div for each base
-  let qs = [];
-  bases.forEach(base => {
-    const mul1=[], mul2=[], div=[];
-    for(let i=0;i<=12;i++){ mul1.push({q:`${base} × ${i}`, a:base*i}); mul2.push({q:`${i} × ${base}`, a:base*i}); div.push({q:`${base*i} ÷ ${base}`, a:i}); }
-    qs.push(...mul1.sort(()=>0.5-Math.random()).slice(0,perTypePerBase));
-    qs.push(...mul2.sort(()=>0.5-Math.random()).slice(0,perTypePerBase));
-    qs.push(...div .sort(()=>0.5-Math.random()).slice(0,perTypePerBase));
-  });
-  // If under target due to rounding, top up with random from all pools
-  while (qs.length < total){
-    const base = bases[Math.floor(Math.random()*bases.length)];
-    const i = Math.floor(Math.random()*13);
-    const type = Math.floor(Math.random()*3);
-    if (type===0) qs.push({q:`${base} × ${i}`, a:base*i});
-    else if (type===1) qs.push({q:`${i} × ${base}`, a:base*i});
-    else qs.push({q:`${base*i} ÷ ${base}`, a:i});
-  }
-  return qs.sort(()=>0.5-Math.random());
+
+/* Exact Baseline-style 30Q builder for 3&4 mixed */
+function buildQuestionsMixedBaseline34(){
+  const bases = [3,4];
+  const pickBase = () => bases[Math.floor(Math.random()*bases.length)];
+  const randI = () => Math.floor(Math.random()*13); // 0..12
+
+  const first10 = [];  // * × 3 or 4
+  for (let k=0;k<10;k++){ const b = pickBase(); const i = randI(); first10.push({ q: `${i} × ${b}`, a: i*b }); }
+
+  const next10 = [];   // 3 or 4 × *
+  for (let k=0;k<10;k++){ const b = pickBase(); const i = randI(); next10.push({ q: `${b} × ${i}`, a: i*b }); }
+
+  const last10 = [];   // * ÷ 3 or 4
+  for (let k=0;k<10;k++){ const b = pickBase(); const i = randI(); last10.push({ q: `${b*i} ÷ ${b}`, a: i }); }
+
+  return [...first10, ...next10, ...last10];
 }
 
 /******************** QUIZ FLOW ********************/
@@ -223,11 +220,11 @@ function startQuiz(){ // Mini
   preflightAndStart(() => buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×${mode==='tester'?' (Tester)':''}`, (mode==='tester')?30:90);
 }
 
-function startWhiteBelt(){ // Ninja: White
+function startWhiteBelt(){ // Ninja: White (3 & 4 mixed, baseline style)
   quizType = 'ninja';
   ninjaName = 'White Ninja Belt';
   ninjaBases = [3,4];
-  preflightAndStart(() => buildQuestionsMixed(ninjaBases, NINJA_QUESTIONS), `${ninjaName} — 3× & 4×`, NINJA_TIME);
+  preflightAndStart(buildQuestionsMixedBaseline34, `${ninjaName} — 3× & 4×`, NINJA_TIME);
 }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
@@ -262,6 +259,7 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
       a.removeEventListener('focus',      preventSoftKeyboard, true);
       const echo = $('answer-echo'); if (echo) echo.style.display = "none";
       a.onkeydown = (e) => { if (e.key === 'Enter') handleKey(e); };
+      setTimeout(()=>a.focus(), 0);
     }
   }
   const pad = getPadEl(); if (pad){ pad.innerHTML = ''; pad.style.display = 'grid'; }
