@@ -1,7 +1,9 @@
-/* Times Tables Trainer — script.js (frontpage-39)
-   Changes in 39:
-   - Dynamic answer length now allows +2 extra digits beyond the correct answer length.
-   - Everything else preserved from 38 (hidden 5-min timer, keypad, offline queue, belts).
+/* Times Tables Trainer — script.js (frontpage-40)
+   Changes in 40:
+   - Fix: keypad is hidden on Home/Mini/Ninja and only shown on the Quiz screen (prevents overlay blocking clicks).
+   - Keeps frontpage-39 features:
+     • Dynamic answer length allows +2 digits beyond correct answer length.
+     • Hidden 5-min timer, keypad, offline queue, and all belt rules preserved.
 */
 
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
@@ -9,7 +11,7 @@ const SHEET_SECRET   = "Banstead123";
 
 const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes
 const BASE_MAX_ANSWER_LEN  = 4;   // most modes fit ≤ 4 digits
-const EXTRA_DIGITS_ALLOWED = 2;   // NEW: allow +2 beyond correct answer length
+const EXTRA_DIGITS_ALLOWED = 2;   // allow +2 beyond correct answer length
 const QUEUE_KEY            = "tttQueueV1";
 const NAME_KEY             = "tttName";
 
@@ -42,7 +44,6 @@ function getMaxLenForCurrentQuestion(){
     const q = allQuestions[currentIndex];
     if (!q || typeof q.a === "undefined") return BASE_MAX_ANSWER_LEN;
     const ansLen = String(q.a).length;
-    // Allow children to make an error like an extra zero: +2 headroom
     return Math.max(BASE_MAX_ANSWER_LEN, ansLen + EXTRA_DIGITS_ALLOWED);
   }catch{
     return BASE_MAX_ANSWER_LEN;
@@ -56,13 +57,17 @@ function syncAnswerMaxLen(){
   if (a.value.length > cap) a.value = a.value.slice(0, cap);
 }
 
-/* ---------- navigation ---------- */
+/* ---------- navigation (now also toggles keypad visibility) ---------- */
 function showOnly(id){
   ["home","mini","ninja","quiz-container"].forEach(v=>{
     const el = $(v);
     if (el) el.style.display = (v===id ? "block" : "none");
   });
+  // NEW: show keypad only on quiz screen
+  const k = $("keypad");
+  if (k) k.style.display = (id === "quiz-container" ? "block" : "none");
 }
+
 function goHome(){ showOnly("home"); }
 function goMini(){
   if (!userName) { userName = (localStorage.getItem(NAME_KEY) || "").trim(); }
@@ -230,7 +235,7 @@ function preflightAndStart(questions, opts={}){
   if (quiz) quiz.setAttribute("data-theme", opts.theme || "");
 
   buildKeypadIfNeeded();
-  showOnly("quiz-container");
+  showOnly("quiz-container"); // will also show keypad
 
   const title = $("quiz-title");
   if (title) title.textContent = modeLabel || "Quiz";
@@ -371,7 +376,6 @@ function showAnswers(){
 function buildKeypadIfNeeded(){
   const k = $("keypad");
   if (!k) return;
-  // Fixed-position keypad UI is styled in CSS; we only fill the buttons here.
   k.innerHTML = `
     <div class="pad">
       <button class="pad-btn" data-k="7">7</button>
@@ -505,4 +509,7 @@ window.startSilverBelt = startSilverBelt;
 (function init(){
   const saved = localStorage.getItem(NAME_KEY);
   if (saved && $("name-input")) $("name-input").value = saved;
+  // Ensure keypad hidden on first load (home screen)
+  const k = $("keypad");
+  if (k) k.style.display = "none";
 })();
