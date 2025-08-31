@@ -400,13 +400,14 @@ function showAnswers(){
     const color = correct ? "green" : "red";
     html += `
       <div style="font-size:22px; font-weight:bold; color:${color}; text-align:left;">
-        ${i+1}. ${q.q} = ${userAns}
+        ${q.q} = ${userAns}
       </div>
     `;
   });
   html += "</div>";
   s.innerHTML += html;
 }
+
 
 /******************** EXPORTS ********************/
 window.goHome = goHome;
