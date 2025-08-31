@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#1e3a8a" />
   <link rel="icon" href="./favicon.ico" />
-  <link rel="stylesheet" href="./styles.css?v=frontpage-12" />
+  <!-- BUMPED -->
+  <link rel="stylesheet" href="./styles.css?v=frontpage-13" />
 </head>
 <body>
   <noscript>
@@ -48,14 +49,9 @@
     <h2 class="subtitle" id="mini-title" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
     <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices"></div>
 
-    <h2 class="subtitle" style="font-size:32px; margin-top:10px;">Mode</h2>
-    <div id="mode-choices" class="choice-buttons" role="group" aria-label="Mode choices">
-      <button type="button" class="choice" id="mode-baseline" onclick="selectMode('baseline')" aria-pressed="true">Baseline (30 Q / 90s)</button>
-      <button type="button" class="choice" id="mode-tester"   onclick="selectMode('tester')"   aria-pressed="false">Tester (12 Q / 30s)</button>
-    </div>
-
+    <!-- Tester removed; baseline only -->
     <div class="choice-buttons">
-      <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz</button>
+      <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz (30 Q / 90s)</button>
       <button class="big-button" onclick="goHome()">Back</button>
     </div>
   </section>
@@ -108,6 +104,7 @@
     </div>
   </section>
 
-  <script src="./script.js?v=frontpage-12" defer></script>
+  <!-- BUMPED -->
+  <script src="./script.js?v=frontpage-13"></script>
 </body>
 </html>
