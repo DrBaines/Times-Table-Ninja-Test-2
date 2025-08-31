@@ -240,3 +240,73 @@ body {
 .belt-card.black  .belt-name { color: #111; }
 .belt-card.bronze .belt-name { color: #5c4428; }
 .belt-card.silver .belt-name { color: #222; }
+
+/* === Fixed keypad (frontpage-39) === */
+#quiz-container {
+  /* reserve space so the fixed keypad doesn't overlap content */
+  padding-bottom: 260px; /* adjust if you tweak keypad height */
+}
+
+/* fixed position wrapper for keypad */
+#keypad {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 1000;
+  /* ensure it doesn't stretch oddly */
+  width: min(420px, 92vw);
+}
+
+/* grid layout inside keypad */
+#keypad .pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 64px;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  background: rgba(240,240,240,0.96);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  backdrop-filter: saturate(1.2) blur(2px);
+}
+
+/* buttons */
+#keypad .pad-btn {
+  font-size: 24px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  background: #eef5ff;     /* numbers: big/blue feel */
+  color: #1d4ed8;
+  touch-action: manipulation;
+}
+#keypad .pad-enter,
+#keypad .pad-back,
+#keypad .pad-clear {
+  background: #e7e7e7;     /* grey for Enter/Clear/Back */
+  color: #222;
+}
+
+/* tall Enter on the right column */
+#keypad .pad-enter {
+  grid-row: span 1;
+}
+
+/* wide 0 on bottom row (spans two columns) */
+#keypad .pad-wide {
+  grid-column: span 2;
+}
+
+/* make sure buttons are large enough on small screens */
+#keypad .pad-btn {
+  min-width: 64px;
+  min-height: 64px;
+}
+
+/* prevent text selection while tapping */
+#keypad, #keypad * {
+  -webkit-user-select: none;
+  user-select: none;
+}
