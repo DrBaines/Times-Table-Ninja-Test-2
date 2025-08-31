@@ -231,3 +231,8 @@ body {
 
 .belt-card.pink { background: #f8bbd0; }
 .belt-card.pink .belt-name { background: #f8bbd0; color: #5a0a35; }
+
+#quiz-container {
+  padding: 20px;
+  border-radius: 16px;
+}
