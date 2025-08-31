@@ -310,3 +310,6 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+/* Ensure keypad is OFF by default; only ON during quiz via body[data-screen] */
+#keypad { display: none; pointer-events: none; }
+body[data-screen="quiz-container"] #keypad { display: block; pointer-events: auto; }
