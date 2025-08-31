@@ -1,8 +1,9 @@
-/* Times Tables Trainer — script.js (frontpage-41)
-   Changes in 41:
-   - Keypad visibility is controlled via CSS with body[data-screen="..."] so it's GUARANTEED hidden off-quiz.
-   - No inline show/hide for keypad; we set data-screen=home|mini|ninja|quiz-container.
-   - Keeps +2 digit headroom, hidden 5-min timer, offline queue, all belt rules.
+/* Times Tables Trainer — script.js (frontpage-42)
+   Fixes:
+   - Keypad is created ONLY while on the quiz screen and fully removed on exit.
+   - No overlay can exist on Home/Mini/Ninja screens.
+   - Keeps: +2 digit headroom, hidden 5-min timer, offline queue, belt rules.
+   - Adds: optional Home button wiring by ID (#btn-mini, #btn-ninja) as a fallback.
 */
 
 const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
@@ -56,14 +57,12 @@ function syncAnswerMaxLen(){
   if (a.value.length > cap) a.value = a.value.slice(0, cap);
 }
 
-/* ---------- navigation (sets data-screen attribute) ---------- */
+/* ---------- navigation ---------- */
 function setScreen(id){
-  // Show the one section we want
   ["home","mini","ninja","quiz-container"].forEach(v=>{
     const el = $(v);
     if (el) el.style.display = (v===id ? "block" : "none");
   });
-  // Drive CSS visibility for keypad etc.
   document.body.setAttribute("data-screen", id);
 }
 
@@ -91,6 +90,7 @@ function goNinja(){
 }
 function quitFromQuiz(){
   teardownQuiz();
+  destroyKeypad(); // ensure keypad removed
   goHome();
 }
 
@@ -233,8 +233,8 @@ function preflightAndStart(questions, opts={}){
   const quiz = $("quiz-container");
   if (quiz) quiz.setAttribute("data-theme", opts.theme || "");
 
-  buildKeypadIfNeeded();
-  setScreen("quiz-container"); // drives CSS to show keypad
+  setScreen("quiz-container");
+  createKeypad(); // build keypad only now
 
   const title = $("quiz-title");
   if (title) title.textContent = modeLabel || "Quiz";
@@ -320,6 +320,8 @@ function teardownQuiz(){
 /* ---------- end & answers ---------- */
 function endQuiz(){
   teardownQuiz();
+  destroyKeypad(); // remove keypad so nothing can overlay other screens
+
   let correct = 0;
   for (let i=0;i<allQuestions.length;i++){
     const c = Number(allQuestions[i].a);
@@ -371,11 +373,11 @@ function showAnswers(){
   s.innerHTML += html;
 }
 
-/* ---------- keypad & keyboard ---------- */
-function buildKeypadIfNeeded(){
-  const k = $("keypad");
-  if (!k) return;
-  k.innerHTML = `
+/* ---------- keypad: create only during quiz ---------- */
+function createKeypad(){
+  const host = $("keypad");
+  if (!host) return;
+  host.innerHTML = `
     <div class="pad">
       <button class="pad-btn" data-k="7">7</button>
       <button class="pad-btn" data-k="8">8</button>
@@ -398,13 +400,25 @@ function buildKeypadIfNeeded(){
       <button class="pad-btn pad-enter" data-k="enter">Enter</button>
     </div>
   `;
-  k.querySelectorAll(".pad-btn").forEach(btn=>{
+  host.style.display = "block";
+  host.style.pointerEvents = "auto";
+  host.querySelectorAll(".pad-btn").forEach(btn=>{
     btn.addEventListener("pointerdown", (e)=>{
       e.preventDefault();
       handleKey(btn.getAttribute("data-k"));
     }, { passive:false });
   });
 }
+
+function destroyKeypad(){
+  const host = $("keypad");
+  if (!host) return;
+  host.innerHTML = "";
+  host.style.display = "none";
+  host.style.pointerEvents = "none";
+}
+
+/* ---------- keyboard ---------- */
 function attachKeyboard(a){
   if (desktopKeyHandler) document.removeEventListener("keydown", desktopKeyHandler);
   desktopKeyHandler = (e)=>{
@@ -481,7 +495,6 @@ window.quitFromQuiz = quitFromQuiz;
 window.startQuiz = startQuiz;
 
 window.buildTableButtons = buildTableButtons;
-window.buildKeypadIfNeeded = buildKeypadIfNeeded;
 window.selectTable = selectTable;
 
 window.preflightAndStart = preflightAndStart;
@@ -508,6 +521,17 @@ window.startSilverBelt = startSilverBelt;
 (function init(){
   const saved = localStorage.getItem(NAME_KEY);
   if (saved && $("name-input")) $("name-input").value = saved;
-  // Start on home
   setScreen("home");
+
+  // Fallback wiring if your HTML uses IDs instead of inline onclicks
+  const miniBtn = $("btn-mini");
+  const ninjaBtn = $("btn-ninja");
+  if (miniBtn && !miniBtn._wired){
+    miniBtn._wired = true;
+    miniBtn.addEventListener("click", (e)=>{ e.preventDefault(); goMini(); });
+  }
+  if (ninjaBtn && !ninjaBtn._wired){
+    ninjaBtn._wired = true;
+    ninjaBtn.addEventListener("click", (e)=>{ e.preventDefault(); goNinja(); });
+  }
 })();
