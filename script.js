@@ -1,11 +1,5 @@
 /* =========================================================
-   Times Tables Trainer - Script (frontpage-25)
-   - 5 minutes (300s) per quiz
-   - 50 questions (30 baseline + 20 mixed)
-   - Ninja belts with pale quiz background
-   - Answer grid: 5 columns, no numbering
-   - Quit: during quiz -> Mini; after quiz -> Home
-   - Keyboard entry (Windows/macOS) + on-screen keypad
+   Times Tables Trainer - Script (frontpage-27)
    ========================================================= */
 
 /******** Google Sheet endpoint (multi-device) ********/
@@ -40,7 +34,7 @@ window.addEventListener("DOMContentLoaded", flushQueue);
 /******************** STATE ********************/
 let selectedBase = null;         // Mini: 2..12
 let quizType = 'single';         // 'single' | 'ninja'
-let ninjaName = '';              // e.g., 'White Ninja Belt'
+let ninjaName = '';              // e.g., 'Purple Ninja Belt'
 const QUIZ_TIME = 300;           // 5 minutes
 const MAX_ANSWER_LEN = 4;
 
@@ -108,6 +102,7 @@ function goMini(){
 }
 function goNinja(){ setUsernameFromHome(); clearResultsUI(); hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja()); }
 
+/* Quit: ALWAYS go Home */
 function quitFromQuiz(){
   if (timer){ clearInterval(timer); timer=null; }
   clearResultsUI();
@@ -172,6 +167,7 @@ function selectTable(base){
 }
 
 /******************** QUESTION BUILDERS ********************/
+/* Build 30 in 3 patterns (10 each) */
 function block30_single(base){
   const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${i} × ${base}`, a:base*i});
   const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${base} × ${i}`, a:base*i});
@@ -181,21 +177,23 @@ function block30_single(base){
   const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
   return [...set1, ...set2, ...set3];
 }
+/* Build 30 in 3 patterns for mixed bases */
 function block30_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
-  const r = () => Math.floor(Math.random()*13); // 0..12
+  const r = () => Math.floor(Math.random()*13);
   const a1=[], a2=[], a3=[];
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a1.push({q:`${i} × ${b}`, a:i*b}); }
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a2.push({q:`${b} × ${i}`, a:i*b}); }
   for(let k=0;k<10;k++){ const b=pick(), i=r(); a3.push({q:`${b*i} ÷ ${b}`, a:i}); }
   return [...a1, ...a2, ...a3];
 }
+/* Extra 20 mixed */
 function extra20_mixed(bases){
   const pick = () => bases[Math.floor(Math.random()*bases.length)];
   const r = () => Math.floor(Math.random()*13);
   const out = [];
   for (let k=0;k<20;k++){
-    const type = Math.floor(Math.random()*3); // 0,1,2
+    const type = Math.floor(Math.random()*3);
     const b = pick(); const i = r();
     if (type === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
     else if (type === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
@@ -203,16 +201,29 @@ function extra20_mixed(bases){
   }
   return out;
 }
-function buildQuestionsSingle(base){
-  const base30 = block30_single(base);
-  const extra = extra20_mixed([base]);
-  return base30.concat(extra);
+/* NEW: generic builder for any total (e.g., 100) with ~equal split across 3 patterns */
+function buildMixedCustom(bases, total){
+  const perType = Math.floor(total / 3);
+  const remainder = total - perType*3;
+  const counts = [perType, perType, perType];
+  for (let i=0;i<remainder;i++) counts[i]++;
+
+  const pick = () => bases[Math.floor(Math.random()*bases.length)];
+  const r = () => Math.floor(Math.random()*13);
+  const out = [];
+  // type 0: i × b
+  for (let k=0;k<counts[0];k++){ const b=pick(), i=r(); out.push({ q:`${i} × ${b}`, a:i*b }); }
+  // type 1: b × i
+  for (let k=0;k<counts[1];k++){ const b=pick(), i=r(); out.push({ q:`${b} × ${i}`, a:i*b }); }
+  // type 2: (b*i) ÷ b
+  for (let k=0;k<counts[2];k++){ const b=pick(), i=r(); out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
+
+  return out;
 }
-function buildQuestionsMixedBaseline(bases){
-  const base30 = block30_mixed(bases);
-  const extra = extra20_mixed(bases);
-  return base30.concat(extra);
-}
+
+/* Public builders: 50 total for minis/many belts */
+function buildQuestionsSingle(base){ return block30_single(base).concat(extra20_mixed([base])); }
+function buildQuestionsMixedBaseline(bases){ return block30_mixed(bases).concat(extra20_mixed(bases)); }
 
 /******************** QUIZ FLOW ********************/
 function startQuiz(){ 
@@ -220,12 +231,19 @@ function startQuiz(){
   if(!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
   preflightAndStart(()=>buildQuestionsSingle(selectedBase), `Practising ${selectedBase}×`, QUIZ_TIME);
 }
+
+/* Existing belts (50 Q) */
 function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([3,4]),       `White Ninja Belt`, QUIZ_TIME); }
 function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([4,6]),       `Yellow Ninja Belt`, QUIZ_TIME); }
 function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6]), `Orange Ninja Belt`, QUIZ_TIME); }
 function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  preflightAndStart(()=>buildQuestionsMixedBaseline([4,8]),       `Green Ninja Belt`, QUIZ_TIME); }
 function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,8]),       `Blue Ninja Belt`, QUIZ_TIME); }
 function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>buildQuestionsMixedBaseline([7,9]),       `Pink Ninja Belt`, QUIZ_TIME); }
+
+/* NEW belts */
+function startPurpleBelt(){ quizType='ninja'; ninjaName='Purple Ninja Belt'; preflightAndStart(()=>buildQuestionsMixedBaseline([2,3,4,5,6,7,8,9,10]), `Purple Ninja Belt`, QUIZ_TIME); }
+function startRedBelt(){    quizType='ninja'; ninjaName='Red Ninja Belt';    preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 100),        `Red Ninja Belt`, QUIZ_TIME); }
+function startBlackBelt(){  quizType='ninja'; ninjaName='Black Ninja Belt';  preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10,11,12], 100),   `Black Ninja Belt`, QUIZ_TIME); }
 
 function preflightAndStart(qBuilder, welcomeText, timerSeconds){
   clearResultsUI();
@@ -254,6 +272,9 @@ function preflightAndStart(qBuilder, welcomeText, timerSeconds){
     else if (ninjaName.includes("Green"))  bg = "#e8f5e9";
     else if (ninjaName.includes("Blue"))   bg = "#e3f2fd";
     else if (ninjaName.includes("Pink"))   bg = "#fce4ec";
+    else if (ninjaName.includes("Purple")) bg = "#ede7f6";
+    else if (ninjaName.includes("Red"))    bg = "#ffebee";
+    else if (ninjaName.includes("Black"))  bg = "#f5f5f5";
   }
   if (quiz) quiz.style.background = bg;
 
@@ -423,3 +444,6 @@ window.startOrangeBelt = startOrangeBelt;
 window.startGreenBelt  = startGreenBelt;
 window.startBlueBelt   = startBlueBelt;
 window.startPinkBelt   = startPinkBelt;
+window.startPurpleBelt = startPurpleBelt;
+window.startRedBelt    = startRedBelt;
+window.startBlackBelt  = startBlackBelt;
