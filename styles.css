@@ -1,5 +1,5 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet (frontpage-31)
+   Times Tables Trainer - Stylesheet (frontpage-35)
    ========================================================= */
 
 /* Base layout */
@@ -217,33 +217,27 @@ body {
 .belt-meta { font-size: 16px; opacity: 0.9; margin-bottom: 12px; }
 
 /* Colour themes */
-.belt-card.white { background: #ffffff; }
-.belt-card.white .belt-name { background: #ffffff; color: #111; }
-
+.belt-card.white { background: #ffffff; border: none; }
 .belt-card.yellow { background: #fff59d; }
-.belt-card.yellow .belt-name { background: #fff59d; color: #111; }
-
 .belt-card.orange { background: #ffcc80; }
-.belt-card.orange .belt-name { background: #ffcc80; color: #111; }
-
-.belt-card.green { background: #a5d6a7; }
-.belt-card.green .belt-name { background: #a5d6a7; color: #0b3d0b; }
-
-.belt-card.blue { background: #90caf9; }
-.belt-card.blue .belt-name { background: #90caf9; color: #0a2a5a; }
-
-.belt-card.pink { background: #f8bbd0; }
-.belt-card.pink .belt-name { background: #f8bbd0; color: #5a0a35; }
-
+.belt-card.green  { background: #a5d6a7; }
+.belt-card.blue   { background: #90caf9; }
+.belt-card.pink   { background: #f8bbd0; }
 .belt-card.purple { background: #d1c4e9; }
-.belt-card.purple .belt-name { background: #d1c4e9; color: #3a2a6a; }
+.belt-card.red    { background: #ef9a9a; }
+.belt-card.black  { background: #e0e0e0; }
+.belt-card.bronze { background: #e7c9a6; }
+/* NEW: Silver */
+.belt-card.silver { background: #d9d9d9; }
 
-.belt-card.red { background: #ef9a9a; }
-.belt-card.red .belt-name { background: #ef9a9a; color: #5a0a0a; }
-
-.belt-card.black { background: #e0e0e0; }
-.belt-card.black .belt-name { background: #e0e0e0; color: #111; }
-
-/* NEW: Bronze */
-.belt-card.bronze { background: #f0e0c6; }            /* pale bronze */
-.belt-card.bronze .belt-name { background: #f0e0c6; color: #6b4e21; }
+.belt-card .belt-name { color: #111; }
+.belt-card.yellow .belt-name { color: #111; }
+.belt-card.orange .belt-name { color: #111; }
+.belt-card.green  .belt-name { color: #0b3d0b; }
+.belt-card.blue   .belt-name { color: #0a2a5a; }
+.belt-card.pink   .belt-name { color: #5a0a35; }
+.belt-card.purple .belt-name { color: #3a2a6a; }
+.belt-card.red    .belt-name { color: #5a0a0a; }
+.belt-card.black  .belt-name { color: #111; }
+.belt-card.bronze .belt-name { color: #5c4428; }
+.belt-card.silver .belt-name { color: #222; }
