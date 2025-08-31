@@ -6,18 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#1e3a8a" />
   <link rel="icon" href="./favicon.ico" />
-
-  <!-- =========================================================
-       REMINDER: If you update styles.css or script.js,
-       bump the version numbers below so browsers fetch the latest.
-       Example:
-       <link rel="stylesheet" href="./styles.css?v=frontpage-8" />
-       <script src="./script.js?v=frontpage-8"></script>
-
-       Change just below and right at bottom of file
-       ========================================================= -->
-
-  <link rel="stylesheet" href="./styles.css?v=frontpage-9" />
+  <link rel="stylesheet" href="./styles.css?v=frontpage-10" />
 </head>
 <body>
   <noscript>
@@ -57,7 +46,6 @@
     <h2 class="subtitle" id="hello-user"></h2>
 
     <h2 class="subtitle" id="mini-title" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
-    <!-- JS will build 2×–12× buttons here -->
     <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices"></div>
 
     <h2 class="subtitle" style="font-size:32px; margin-top:10px;">Mode</h2>
@@ -72,20 +60,24 @@
     </div>
   </section>
 
-  <!-- ===== NINJA BELT (coming soon) ===== -->
+  <!-- ===== NINJA BELT (White: 3× & 4×) ===== -->
   <section id="ninja-screen" class="center" style="display:none;" aria-labelledby="ninja-title">
-    <h2 class="subtitle" id="ninja-title">Ninja Belt (Mixed Tables)</h2>
-    <p class="info-text">Mixed-table practice is coming soon! For now, try a Mini Test.</p>
-    <div class="choice-buttons">
-      <button class="big-button" onclick="goHome()">Back</button>
+    <h2 class="subtitle" id="ninja-title">Ninja Belt</h2>
+    <div class="belt-grid">
+      <div class="belt-card white">
+        <div class="belt-name">White Ninja Belt</div>
+        <div class="belt-desc">Mixed: 3× &amp; 4×</div>
+        <div class="belt-meta">12 Q • 45s</div>
+        <button class="big-button primary" onclick="startWhiteBelt()">Start White Belt</button>
+      </div>
     </div>
+    <div class="choice-buttons"><button class="big-button" onclick="goHome()">Back</button></div>
   </section>
 
   <!-- ===== QUIZ UI ===== -->
   <section id="quiz-container" class="center" style="display:none;" aria-labelledby="quiz-title">
     <h2 id="welcome-user" class="subtitle"></h2>
 
-    <!-- Side-by-side layout: question+answer | keypad -->
     <div class="quiz-row">
       <div class="question-col">
         <h2 id="quiz-title" class="visually-hidden">Times Table Question</h2>
@@ -99,9 +91,10 @@
           autocomplete="off"
           aria-label="Your answer"
         />
+        <!-- Echo for iOS -->
+        <div id="answer-echo" class="answer-echo" style="display:none;"></div>
       </div>
 
-      <!-- Numpad keypad -->
       <div id="answer-pad" class="answer-pad calc-pad" aria-label="On-screen number pad" role="group">
         <noscript><p>Enable JavaScript to use the on-screen keypad.</p></noscript>
       </div>
@@ -115,7 +108,6 @@
     </div>
   </section>
 
-  <!-- Load script last so functions are available for onclick handlers -->
-  <script src="./script.js?v=frontpage-9" defer></script>
+  <script src="./script.js?v=frontpage-10" defer></script>
 </body>
 </html>
