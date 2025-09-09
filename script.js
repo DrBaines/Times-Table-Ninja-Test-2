@@ -133,18 +133,34 @@ function buildTableButtons(){
 }
 function selectTable(b){ selectedBase = clamp(b,2,12); }
 function buildMiniQuestions(base, total){
-  const out = [];
-  for (let i=1;i<=10;i++) out.push({ q:`${i} × ${base}`, a:i*base });
-  for (let i=1;i<=10;i++) out.push({ q:`${base} × ${i}`, a:base*i });
-  for (let i=1;i<=10;i++) out.push({ q:`${base*i} ÷ ${base}`, a:i });
+  // Build three structured sets of 10 each
+  const set1 = []; // i × base
+  const set2 = []; // base × i
+  const set3 = []; // (base×i) ÷ base
+
+  for (let i = 1; i <= 10; i++) set1.push({ q: `${i} × ${base}`,     a: i * base });
+  for (let i = 1; i <= 10; i++) set2.push({ q: `${base} × ${i}`,     a: base * i });
+  for (let i = 1; i <= 10; i++) set3.push({ q: `${base * i} ÷ ${base}`, a: i });
+
+  // Shuffle each structured block
+  shuffle(set1);
+  shuffle(set2);
+  shuffle(set3);
+
+  // Final 20: random mix across the three forms
   const mix = [];
-  for (let i=0;i<20;i++){
-    const k = randInt(1,10); const t = randInt(1,3);
-    if (t===1) mix.push({ q:`${k} × ${base}`, a:k*base });
-    else if (t===2) mix.push({ q:`${base} × ${k}`, a:base*k });
-    else mix.push({ q:`${base*k} ÷ ${base}`, a:k });
+  for (let i = 0; i < 20; i++){
+    const k = randInt(1, 10);
+    const t = randInt(1, 3);
+    if (t === 1)      mix.push({ q: `${k} × ${base}`,      a: k * base });
+    else if (t === 2) mix.push({ q: `${base} × ${k}`,      a: base * k });
+    else              mix.push({ q: `${base * k} ÷ ${base}`, a: k });
   }
-  return out.concat(shuffle(mix)).slice(0,total);
+  shuffle(mix);
+
+  // Concatenate and ensure exactly 50
+  const out = [...set1, ...set2, ...set3, ...mix].slice(0, 50);
+  return out;
 }
 function startQuiz(){
   modeLabel = `Mini ${selectedBase}×`;
