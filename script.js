@@ -1,16 +1,16 @@
-/* Times Tables Trainer — script.js (frontpage-GH36)
-   - Answer input stays fixed (question shown in a fixed-height band)
-   - Gold/Silver/Platinum/Obsidian questions forced to a single line, auto-fit smaller
-   - Answers grid single-line, smaller font
-   - Titles: "Dr B TTN — {Belt}" (and Mini)
-   - iPad OSK suppression; robust nav; keypad
+/* Times Tables Trainer — script.js (frontpage-GH47)
+   - One-size-per-belt font on iPad/touch (no per-question resizing)
+   - Title: "Dr B TTN — {Belt}"
+   - Print/Save button (captures name, score, answers) + date dd/mm/yy
+   - Answers: 5 columns; wrong = red; Quit button below answers
+   - Keypad + keyboard; hidden timer; offline queue stubs
 */
 
 /* ====== Config ====== */
-const SHEET_ENDPOINT = ""; // demo/offline
-const SHEET_SECRET   = "";
+const SHEET_ENDPOINT = "";   // set your Apps Script web app URL if needed
+const SHEET_SECRET   = "";   // secret if your endpoint requires it
 
-const QUIZ_SECONDS_DEFAULT = 300; // 5 mins hidden timer
+const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes (hidden timer)
 const QUEUE_KEY = "tttQueueV1";
 const NAME_KEY  = "tttName";
 
@@ -23,6 +23,10 @@ let userAnswers = [];
 let currentIndex = 0;
 let ended = false;
 
+// Lock one font size per belt on iPad/touch
+let BELT_FONT_PX = null; // null = desktop behavior; number = locked font size
+
+// Timer & input handling
 let timerInterval = null;
 let timerDeadline = 0;
 let desktopKeyHandler = null;
@@ -36,93 +40,18 @@ window.onerror = function (msg, src, line, col, err) {
 
 /* ====== Utils ====== */
 const $ = (id)=>document.getElementById(id);
-const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 const randInt=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
 
-/* ==== Fixed-position question band + auto-fit helpers ==== */
-
-// Band heights (tweak to taste)
-// Band heights (tweak to taste)
-const BAND_HEIGHT_DESKTOP = 160;
-const BAND_HEIGHT_TABLET  = 120;
-
-// Tablet-ish breakpoint
-function isTabletLike(){
-  return window.matchMedia && matchMedia("(max-width: 834px)").matches;
+/* Date helper for header */
+function formatToday(){
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
 }
-
-/**
- * Ensure the question element sits inside a rigid, fixed-height band.
- * This prevents any vertical movement of the answer input below.
- */
-function ensureQuestionBand(){
-  const q = document.getElementById("question");
-  if (!q) return null;
-
-  // Already wrapped?
-  if (q.parentElement && q.parentElement.id === "question-band") return q.parentElement;
-
-  // Create a rigid, non-flexing band and move #question into it
-  const band = document.createElement("div");
-  band.id = "question-band";
-  band.style.display = "flex";
-  band.style.alignItems = "center";
-  band.style.justifyContent = "center";
-  band.style.width = "100%";
-  band.style.overflow = "hidden";   // never let content affect height
-  band.style.margin = "0 0 20px 0";
-  band.style.flex = "0 0 auto";     // never flex or shrink
-
-  // Insert band right before question and move question inside it
-  q.parentElement.insertBefore(band, q);
-  band.appendChild(q);
-
-  // Make the question itself fully single-line & non-clipping
-  q.style.margin = "0";             // kill default margins that can nudge height
-  q.style.display = "inline-block"; // stable inline box
-  q.style.lineHeight = "1";         // stable metrics
-  q.style.whiteSpace = "nowrap";
-  q.style.overflow = "hidden";
-  q.style.textOverflow = "clip";
-
-  layoutQuestionBand(); // set initial rigid height
-  return band;
-}
-
-/** Set band height AND lock flex-basis to the same height (no movement) */
-function layoutQuestionBand(){
-  const band = document.getElementById("question-band");
-  if (!band) return;
-  const h = isTabletLike() ? BAND_HEIGHT_TABLET : BAND_HEIGHT_DESKTOP;
-  band.style.height = h + "px";
-  band.style.flexBasis = h + "px";  // double pin: height + basis
-}
-
-/**
- * Shrink font until #question fits on one line within its container.
- * startPx: starting font size in px (e.g., 110)
- * minPx:   do not shrink below this (e.g., 56 desktop / 44 tablet)
- */
-function fitSingleLine(qEl, startPx, minPx){
-  if (!qEl) return;
-  const step = 4;
-  let size = startPx;
-
-  qEl.style.whiteSpace = "nowrap";
-  qEl.style.overflow = "hidden";
-  qEl.style.textOverflow = "clip";
-  qEl.style.fontSize = size + "px";
-
-  let tries = 0, maxTries = 30;
-  while (qEl.scrollWidth > qEl.clientWidth && size > minPx && tries++ < maxTries){
-    size -= step;
-    qEl.style.fontSize = size + "px";
-  }
-}
-
-// Keep a resize ref so we can unhook cleanly
-let _refitOnResize = null;
 
 /* ====== Touch detection & iPad keyboard suppression ====== */
 const IS_TOUCH = ((('ontouchstart' in window) || (navigator.maxTouchPoints > 0)))
@@ -284,7 +213,7 @@ function buildSilverQuestions(total){
   }
   return shuffle(out).slice(0,total);
 }
-/* Gold: like Silver but missing-number forms mixed in (exps [0,1]) */
+/* Gold: like Bronze with ×10 exps [0,1] */
 function buildGoldQuestions(total){
   const out = [];
   const exps = [0,1];
@@ -311,7 +240,7 @@ function buildGoldQuestions(total){
   }
   return shuffle(out).slice(0,total);
 }
-/* Platinum: like Silver but exps [0,1,2] */
+/* Platinum: like Silver with exps [0,1,2] */
 function buildPlatinumQuestions(total){
   const out = [];
   const exps = [0,1,2];
@@ -351,141 +280,6 @@ function buildObsidianQuestions(total){
     else            out.push({ q:`${bigB} × ${bigA}`, a:prod });
   }
   return shuffle(out).slice(0,total);
-}
-
-/* ====== Helpers to keep UI stable & single-line ====== */
-// Fixed-height band so the answer box stays in a fixed vertical spot
-function setQuestionFixedBand(qEl){
-  const band = (window.innerWidth <= 834) ? 100 : 140; // iPad/phone vs desktop
-  qEl.style.height = band + "px";
-  qEl.style.lineHeight = band + "px"; // vertically center the single line
-}
-// Auto-fit font size so a single line never wraps
-function fitSingleLine(qEl, startPx, minPx){
-  const step = 4;
-  let size = startPx;
-  qEl.style.fontSize = size + "px";
-  qEl.style.whiteSpace = "nowrap";
-  qEl.style.overflow = "hidden";      // avoid layout jump
-  qEl.style.textOverflow = "clip";    // show full as we shrink
-  // measure and shrink if needed
-  const maxTries = 20;
-  let tries = 0;
-  while (qEl.scrollWidth > qEl.clientWidth && size > minPx && tries++ < maxTries){
-    size -= step;
-    qEl.style.fontSize = size + "px";
-  }
-}
-
-/* ====== Quiz flow ====== */
-function preflightAndStart(questions, opts){
-  if (!Array.isArray(questions) || questions.length === 0) {
-    console.error('[preflight] No questions', questions);
-    setScreen('ninja-screen');
-    return;
-  }
-
-  try {
-    const nameInput = $("home-username");
-    const nm = nameInput ? (nameInput.value||"").trim() : "";
-    if (nm) localStorage.setItem(NAME_KEY, nm);
-  } catch {}
-
-  ended = false;
-  currentIndex = 0;
-  allQuestions = questions.slice();
-  userAnswers = new Array(allQuestions.length).fill("");
-
-  setScreen("quiz-screen");
-
-  // Title: Dr B TTN — {modeLabel}
-  const title = $("quiz-title");
-  if (title) {
-    const label = (modeLabel && modeLabel.trim()) ? ` — ${modeLabel.trim()}` : "";
-    title.textContent = `Dr B TTN${label}`;
-  }
-
-  const qEl = $("question"); if (qEl){ qEl.style.display=""; qEl.textContent=""; }
-  const aEl = $("answer");   if (aEl){
-    aEl.style.display="";
-    aEl.value="";
-    suppressOSK(aEl, IS_TOUCH);
-    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
-  }
-  const s   = $("score");    if (s){ s.innerHTML=""; }
-
-  createKeypad();
-  showQuestion();
-  startTimer(quizSeconds);
-}
-function getMaxLenForCurrentQuestion(){
-  try {
-    const q = allQuestions[currentIndex];
-    const target = (q && typeof q.a !== "undefined") ? String(q.a) : "999999";
-    return clamp(target.length, 1, 10);
-  } catch { return 10; }
-}
-function syncAnswerMaxLen(){
-  const a = $("answer"); if(!a) return;
-  const cap = getMaxLenForCurrentQuestion();
-  try{ a.setAttribute("maxlength", String(cap)); }catch{}
-  if (a.value.length > cap) a.value = a.value.slice(0, cap);
-}
-function showQuestion(){
-  if (ended) return;
-  const qObj = allQuestions[currentIndex];
-  const qEl = document.getElementById("question");
-  const aEl = document.getElementById("answer");
-
-  if (!qObj || typeof qObj.q !== "string") {
-    console.error("[showQuestion] bad question", currentIndex, qObj);
-    endQuiz();
-    return;
-  }
-
-  // Ensure rigid band exists & is sized BEFORE we set text
-  ensureQuestionBand();
-  layoutQuestionBand();
-
-  // Put text, then lock margins/metrics, then fit-to-line
-  qEl.textContent = qObj.q;
-
-  // (extra safety) ensure no margin/line-height creep every time:
-  qEl.style.margin = "0";
-  qEl.style.lineHeight = "1";
-
-  const isLongBelt = /Silver|Gold|Platinum|Obsidian/.test(modeLabel);
-  const startPx = isLongBelt ? 78 : 110;
-  const minPx   = isTabletLike() ? 44 : 56;
-  fitSingleLine(qEl, startPx, minPx);
-
-  if (aEl) {
-    aEl.value = "";
-    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
-    attachKeyboard(aEl);
-  }
-}
-
-
-function quitFromQuiz(){
-  teardownQuiz(); destroyKeypad(); goHome();
-}
-window.quitFromQuiz = quitFromQuiz;
-
-/* ====== Timer ====== */
-function startTimer(seconds){
-  clearInterval(timerInterval);
-  timerDeadline = Date.now() + seconds*1000;
-  timerInterval = setInterval(()=>{
-    const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now())/1000));
-    const t = $("timer"); if (t) t.textContent = String(remaining);
-    if (remaining <= 0){ clearInterval(timerInterval); endQuiz(); }
-  }, 250);
-}
-function teardownQuiz(){
-  clearInterval(timerInterval); timerInterval=null; ended=true; submitLockedUntil=0;
-  if (desktopKeyHandler){ document.removeEventListener("keydown", desktopKeyHandler); desktopKeyHandler=null; }
-  suppressOSK($("answer"), false);
 }
 
 /* ====== Keypad + keyboard ====== */
@@ -549,32 +343,163 @@ function safeSubmit(){
   showQuestion();
 }
 
-/* ====== End & Answers ====== */
-function endQuiz(){
-  teardownQuiz(); destroyKeypad();
-  const qEl=$("question"); if (qEl) qEl.style.display="none";
-  const aEl=$("answer"); if (aEl) aEl.style.display="none";
-  let correct=0;
-  for (let i=0;i<allQuestions.length;i++){
-    const c=Number(allQuestions[i].a);
-    const u=(userAnswers[i]===""?NaN:Number(userAnswers[i]));
-    if (!Number.isNaN(u) && u===c) correct++;
-  }
-  const s=$("score");
-  if (s) s.innerHTML = `<div class="result-line"><strong>Score =</strong> ${correct} / ${allQuestions.length}</div><button class="big-button" onclick="showAnswers()">Show answers</button>`;
+/* ====== Timer ====== */
+function startTimer(seconds){
+  clearInterval(timerInterval);
+  timerDeadline = Date.now() + seconds*1000;
+  timerInterval = setInterval(()=>{
+    const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now())/1000));
+    const t = $("timer"); if (t) t.textContent = String(remaining); // hidden in CSS
+    if (remaining <= 0){ clearInterval(timerInterval); endQuiz(); }
+  }, 250);
 }
-function showAnswers(){
-  const s = $("score"); if(!s) return;
+function teardownQuiz(){
+  clearInterval(timerInterval); timerInterval=null; ended=true; submitLockedUntil=0;
+  if (desktopKeyHandler){ document.removeEventListener("keydown", desktopKeyHandler); desktopKeyHandler=null; }
+  suppressOSK($("answer"), false);
+}
+function quitFromQuiz(){
+  teardownQuiz(); destroyKeypad(); goHome();
+}
+window.quitFromQuiz = quitFromQuiz;
 
-  // EXACTLY 5 columns; items single-line and smaller font
-  let html = `<div class="answers-grid" style="
+/* ====== Font locking for iPad/touch ====== */
+/* Pick a single font size that fits the longest question on one line */
+function computeBeltFontPx(questions){
+  const col = document.querySelector(".question-col");
+  const qEl = $("question");
+  if (!col || !qEl) return 110; // fallback
+
+  const maxWidth = Math.max(320, col.clientWidth - 16);
+  let longest = "";
+  for (const q of questions){
+    if (q && typeof q.q === "string" && q.q.length > longest.length){
+      longest = q.q;
+    }
+  }
+  if (!longest) longest = "12 × 12";
+
+  const probe = document.createElement("span");
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  probe.style.whiteSpace = "nowrap";
+  probe.style.lineHeight = "1";
+  probe.style.margin = "0";
+  probe.style.padding = "0";
+  probe.style.fontFamily = window.getComputedStyle(qEl).fontFamily || "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+  probe.textContent = longest;
+  document.body.appendChild(probe);
+
+  let lo = 44, hi = 150, best = 100;
+  while (lo <= hi){
+    const mid = Math.floor((lo + hi) / 2);
+    probe.style.fontSize = mid + "px";
+    const fits = probe.offsetWidth <= maxWidth;
+    if (fits){ best = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+
+  document.body.removeChild(probe);
+  return best;
+}
+
+/* ====== Quiz flow ====== */
+function preflightAndStart(questions, opts){
+  if (!Array.isArray(questions) || questions.length === 0) {
+    console.error('[preflight] No questions', questions);
+    setScreen('ninja-screen');
+    return;
+  }
+
+  try {
+    const nameInput = $("home-username");
+    const nm = nameInput ? (nameInput.value||"").trim() : "";
+    if (nm) localStorage.setItem(NAME_KEY, nm);
+  } catch {}
+
+  ended = false;
+  currentIndex = 0;
+  allQuestions = questions.slice();
+  userAnswers = new Array(allQuestions.length).fill("");
+
+  setScreen("quiz-screen");
+
+  // Title
+  const title = $("quiz-title");
+  if (title) {
+    const label = (modeLabel && modeLabel.trim()) ? ` — ${modeLabel.trim()}` : "";
+    title.textContent = `Dr B TTN${label}`;
+  }
+
+  const qEl = $("question"); 
+  if (qEl){
+    qEl.style.display="";
+    qEl.textContent="";
+  }
+  const aEl = $("answer");   
+  if (aEl){
+    aEl.style.display="";
+    aEl.value="";
+    suppressOSK(aEl, IS_TOUCH);
+    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
+  }
+  const s = $("score"); if (s){ s.innerHTML=""; }
+
+  // Lock one font size for the whole belt on iPad/touch; desktop free
+  if (IS_TOUCH){
+    BELT_FONT_PX = computeBeltFontPx(allQuestions);
+    if (qEl) qEl.style.fontSize = BELT_FONT_PX + "px";
+  } else {
+    BELT_FONT_PX = null;
+  }
+
+  createKeypad();
+  showQuestion();
+  startTimer(quizSeconds);
+}
+function showQuestion(){
+  if (ended) return;
+  const qObj = allQuestions[currentIndex];
+  const qEl = $("question");
+  const aEl = $("answer");
+
+  if (!qObj || typeof qObj.q !== "string") {
+    console.error("[showQuestion] bad question", currentIndex, qObj);
+    endQuiz();
+    return;
+  }
+
+  // Set text; left-justified is handled in CSS; keep single line via CSS
+  if (qEl){
+    qEl.textContent = qObj.q;
+    // If we locked a font for this belt (iPad/touch), apply it and DO NOT resize
+    if (BELT_FONT_PX){
+      qEl.style.fontSize = BELT_FONT_PX + "px";
+    } else {
+      // Desktop may keep its current font-size; if you want auto-fit on desktop,
+      // you can add your previous fitSingleLine(qEl, 120, 56) here.
+    }
+  }
+
+  if (aEl) {
+    aEl.value = "";
+    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
+    attachKeyboard(aEl);
+  }
+}
+
+/* ====== Answers + Printing ====== */
+function buildAnswersHTML(){
+  let html = `
+    <div class="answers-grid" style="
       display:grid;
       grid-template-columns: repeat(5, 1fr);
       gap:8px;
       align-items:start;
-    ">`;
+      margin-top:10px;
+    ">
+  `;
 
-  for (let i=0;i<allQuestions.length;i++){
+  for (let i=0; i<allQuestions.length; i++){
     const q = allQuestions[i] || {};
     const uRaw = userAnswers[i];
     const u = (uRaw===undefined || uRaw==="") ? "—" : String(uRaw);
@@ -584,7 +509,6 @@ function showAnswers(){
     const displayEq = hasBlank ? q.q.replace("___", `<u>${u}</u>`)
                                : `${q.q} = ${u}`;
 
-    // Force single-line + smaller font inline (so no CSS edit required)
     const baseStyle = "white-space:nowrap;font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;";
     const okStyle   = "color:#2e7d32;background:#edf7ed;border-color:#c8e6c9;";
     const badStyle  = "color:#c62828;background:#fff1f1;border-color:#ffcdd2;";
@@ -593,29 +517,124 @@ function showAnswers(){
   }
 
   html += `</div>`;
-  s.innerHTML = html;
+  return html;
 }
 
-/* ====== Queue (stub for offline) ====== */
+function printResults(){
+  // Compute score + name
+  let correct = 0;
+  for (let i=0; i<allQuestions.length; i++){
+    const c = Number(allQuestions[i].a);
+    const u = (userAnswers[i]==="" ? NaN : Number(userAnswers[i]));
+    if (!Number.isNaN(u) && u === c) correct++;
+  }
+  const username = (localStorage.getItem(NAME_KEY) || "").trim() || "Player";
+  const today = formatToday();
+  const answersHTML = buildAnswersHTML();
+  const belt = modeLabel || "Quiz";
+
+  const win = window.open("", "_blank");
+  if (!win) { alert("Pop-up blocked. Please allow pop-ups to print."); return; }
+
+  const css = `
+    <style>
+      *{ box-sizing: border-box; }
+      body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:20px; color:#111; }
+      h1{ font-size: 24px; margin: 0 0 8px; }
+      .meta{ font-size:18px; margin: 4px 0 14px; }
+      .answers-grid{ display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; align-items:start; }
+      .answer-chip{ font-size:14px; padding:6px 8px; border:1px solid #ddd; border-radius:8px; background:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .answer-chip.correct{ color:#2e7d32; background:#edf7ed; border-color:#c8e6c9; }
+      .answer-chip.wrong{ color:#c62828; background:#fff1f1; border-color:#ffcdd2; }
+      @media print { @page { margin: 12mm; } button { display:none; } }
+    </style>
+  `;
+
+  win.document.open();
+  win.document.write(`
+    <html>
+      <head><title>Dr B TTN — ${belt} — ${username}</title>${css}</head>
+      <body>
+        <h1>Dr B TTN — ${belt}</h1>
+        <div class="meta"><strong>${username}</strong> — Score: <strong>${correct} / ${allQuestions.length}</strong> — ${today}</div>
+        ${answersHTML}
+        <div style="margin-top:16px;">
+          <button onclick="window.print()">Print / Save as PDF</button>
+        </div>
+      </body>
+    </html>
+  `);
+  win.document.close();
+  try { win.onload = ()=>win.print(); } catch {}
+}
+window.printResults = printResults;
+
+function endQuiz(){
+  teardownQuiz();
+  destroyKeypad();
+
+  const qEl = $("question"); if (qEl) qEl.style.display = "none";
+  const aEl = $("answer");   if (aEl) aEl.style.display = "none";
+
+  // Tally score
+  let correct = 0;
+  for (let i=0; i<allQuestions.length; i++){
+    const c = Number(allQuestions[i].a);
+    const u = (userAnswers[i]==="" ? NaN : Number(userAnswers[i]));
+    if (!Number.isNaN(u) && u === c) correct++;
+  }
+  const username = (localStorage.getItem(NAME_KEY) || "").trim() || "Player";
+  const today = formatToday();
+
+  const s = $("score");
+  if (s){
+    s.innerHTML = `
+      <div class="result-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 14px;">
+        <button class="big-button secondary" onclick="printResults()" title="Print or save as PDF">Print / Save</button>
+        <div class="result-line" style="font-size:28px;">
+          <strong>${username}</strong> — Score: <strong>${correct} / ${allQuestions.length}</strong> — ${today}
+        </div>
+      </div>
+      <button class="big-button" onclick="showAnswers()">Show answers</button>
+    `;
+  }
+}
+function showAnswers(){
+  const s = $("score"); 
+  if (!s) return;
+
+  const html = buildAnswersHTML() + `
+    <div style="text-align:center;margin-top:16px;">
+      <button class="big-button" onclick="quitFromQuiz()">Quit</button>
+    </div>
+  `;
+
+  // Remove the "Show answers" button and append the grid + Quit
+  s.innerHTML = s.innerHTML.replace(/<button[^>]*showAnswers\([^)]*\)[^>]*>.*?<\/button>/i, "");
+  s.innerHTML += html;
+}
+window.showAnswers = showAnswers;
+
+/* ====== Queue (stubs) ====== */
 function getQueue(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch{ return []; } }
 function setQueue(arr){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(arr)); }catch{} }
 
 /* ====== Belt start functions (counts per spec) ====== */
-function startWhiteBelt(){   modeLabel="White Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([3,4],50),            {theme:"white"}); }
-function startYellowBelt(){  modeLabel="Yellow Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,6],50),            {theme:"yellow"}); }
-function startOrangeBelt(){  modeLabel="Orange Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([2,3,4,5,6],50),       {theme:"orange"}); }
-function startGreenBelt(){   modeLabel="Green Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,8],50),            {theme:"green"}); }
-function startBlueBelt(){    modeLabel="Blue Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,8],50),            {theme:"blue"}); }
-function startPinkBelt(){    modeLabel="Pink Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,9],50),            {theme:"pink"}); }
-function startPurpleBelt(){  modeLabel="Purple Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(50,{min:2,max:10}),   {theme:"purple"}); }
+function startWhiteBelt(){    modeLabel="White Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([3,4],50),            {theme:"white"}); }
+function startYellowBelt(){   modeLabel="Yellow Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,6],50),            {theme:"yellow"}); }
+function startOrangeBelt(){   modeLabel="Orange Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([2,3,4,5,6],50),       {theme:"orange"}); }
+function startGreenBelt(){    modeLabel="Green Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,8],50),            {theme:"green"}); }
+function startBlueBelt(){     modeLabel="Blue Belt";     quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,8],50),            {theme:"blue"}); }
+function startPinkBelt(){     modeLabel="Pink Belt";     quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,9],50),            {theme:"pink"}); }
+function startPurpleBelt(){   modeLabel="Purple Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(50,{min:2,max:10}),   {theme:"purple"}); }
 
-function startRedBelt(){     modeLabel="Red Belt";     quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:10}),  {theme:"red"}); }
-function startBlackBelt(){   modeLabel="Black Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:12}),  {theme:"black"}); }
-function startBronzeBelt(){  modeLabel="Bronze Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBronzeQuestions(100),           {theme:"bronze"}); }
-function startSilverBelt(){  modeLabel="Silver Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildSilverQuestions(100),           {theme:"silver"}); }
-function startGoldBelt(){    modeLabel="Gold Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildGoldQuestions(100),             {theme:"gold"}); }
-function startPlatinumBelt(){modeLabel="Platinum Belt";quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildPlatinumQuestions(100),         {theme:"platinum"}); }
-function startObsidianBelt(){modeLabel="Obsidian Belt";quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildObsidianQuestions(100),         {theme:"obsidian"}); }
+function startRedBelt(){      modeLabel="Red Belt";      quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:10}),  {theme:"red"}); }
+function startBlackBelt(){    modeLabel="Black Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:12}),  {theme:"black"}); }
+function startBronzeBelt(){   modeLabel="Bronze Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBronzeQuestions(100),           {theme:"bronze"}); }
+function startSilverBelt(){   modeLabel="Silver Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildSilverQuestions(100),           {theme:"silver"}); }
+function startGoldBelt(){     modeLabel="Gold Belt";     quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildGoldQuestions(100),             {theme:"gold"}); }
+function startPlatinumBelt(){ modeLabel="Platinum Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildPlatinumQuestions(100),         {theme:"platinum"}); }
+function startObsidianBelt(){ modeLabel="Obsidian Belt"; quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildObsidianQuestions(100),         {theme:"obsidian"}); }
 
 /* ====== Exports for onclick ====== */
 window.startWhiteBelt=startWhiteBelt; window.startYellowBelt=startYellowBelt;
