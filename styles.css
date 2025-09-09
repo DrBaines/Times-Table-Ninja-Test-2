@@ -40,7 +40,7 @@ body {
 
 /* ---------- Quiz container ---------- */
 #quiz-title { margin-top:10px; margin-bottom:20px; display:block; }
-.question { font-size: 120px; margin: 0; }  /* margin 0 so it never nudges rows */
+.question { font-size: 80px; margin: 0; }  /* margin 0 so it never nudges rows */
 .answer-input { font-size: 100px; width: 340px; text-align: center; margin-top: 0; }
 .timer { font-size: 50px; margin-top: 30px; display:none !important; }
 .score { font-size: 40px; margin-top: 30px; }
@@ -274,31 +274,6 @@ body {
 @media (max-width: 1024px) { :root{ --pad-right: 120px; } #quiz-container{ max-width: 920px; } }
 @media (max-width: 834px)  { :root{ --pad-right: 80px; }  #quiz-container{ max-width: 860px; } }
 @media (min-width: 1440px) { :root{ --pad-right: clamp(240px, 12vw, 360px); } }
-
-/* GH-Fix: normalize belt title sizing */
-.belt-card .belt-name {
-  font-size: 24px;
-  line-height: 1.15;
-  font-weight: 800;
-}
-
-/* If any heading tags or spans are inside, inherit the size */
-.belt-card .belt-name h1,
-.belt-card .belt-name h2,
-.belt-card .belt-name h3,
-.belt-card .belt-name h4,
-.belt-card .belt-name h5,
-.belt-card .belt-name h6,
-.belt-card .belt-name p,
-.belt-card .belt-name span,
-.belt-card .belt-name strong,
-.belt-card .belt-name em {
-  font-size: inherit !important;
-  line-height: inherit;
-  margin: 0;
-}
-
-/* Force Obsidian to exactly match Platinum */
-.belt-card.obsidian .belt-name {
-  font-size: 24px !important;
+@media (max-width: 700px) {
+  .question { font-size: 64px; }
 }
