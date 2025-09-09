@@ -10,7 +10,7 @@
 const SHEET_ENDPOINT = "";   // set your Apps Script web app URL if needed
 const SHEET_SECRET   = "";   // secret if your endpoint requires it
 
-const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes (hidden timer)
+const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes (hidden timer) 
 const QUEUE_KEY = "tttQueueV1";
 const NAME_KEY  = "tttName";
 
