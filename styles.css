@@ -1,7 +1,9 @@
 /* =========================================================
-   Times Tables Trainer - Stylesheet (frontpage-GH35)
+   Times Tables Trainer - Stylesheet (frontpage-GH41)
+   - HARD-LOCKED answer box position via grid rows
+   - Question band: fixed height (desktop & tablet)
    - Keypad right on desktop; bottom-docked on touch devices
-   - Answers grid 5 columns with smaller font; wrong = red
+   - Answers grid: 5 columns, smaller; wrong = red
    ========================================================= */
 
 * { box-sizing: border-box; }
@@ -13,6 +15,7 @@ body {
   color: #111;
 }
 
+/* ---------- Headings / basic UI ---------- */
 .center { text-align: center; margin-top: 80px; }
 .title { font-size: 56px; margin: 0 0 20px; }
 .subtitle { font-size: 48px; margin: 0 0 20px; }
@@ -35,31 +38,16 @@ body {
 .table-btn { font-size:32px; padding:14px 28px; cursor:pointer; border:2px solid #333; border-radius:10px; background:#fff; margin:6px; }
 .table-btn:hover { background:#f0f0f0; }
 
+/* ---------- Quiz container ---------- */
 #quiz-title { margin-top:10px; margin-bottom:20px; display:block; }
-/* Fixed-height band so the answer box stays put */
-.question {
-  font-size: 120px;
-  margin: 0 0 30px;
-  height: 160px;          /* desktop band height */
-  line-height: 160px;     /* vertically center single line */
-  white-space: nowrap;    /* force single line */
-  overflow: hidden;       /* prevent wrapping from pushing layout */
-  text-overflow: clip;    /* (or 'ellipsis' if you prefer …) */
-}
-
-/* Slightly smaller band on iPad/phones */
-@media (max-width: 834px) {
-  .question {
-    height: 120px;
-    line-height: 120px;
-  }
-}
+.question { font-size: 120px; margin: 0; }  /* margin 0 so it never nudges rows */
 .answer-input { font-size: 100px; width: 340px; text-align: center; margin-top: 0; }
 .timer { font-size: 50px; margin-top: 30px; display:none !important; }
 .score { font-size: 40px; margin-top: 30px; }
 
 #quiz-container { padding: 20px; border-radius: 16px; }
 
+/* Two-column layout: [question/answers | keypad] */
 .quiz-row {
   display: inline-grid;
   grid-template-columns: minmax(380px, auto) auto;
@@ -68,9 +56,50 @@ body {
   justify-content: center;
   margin: 60px auto 0;
 }
-.question-col { display:flex; flex-direction:column; align-items:center; text-align:center; }
 
-/* Keypad positioning + container width (desktop defaults) */
+/* ====== HARD-LOCK the answer box position ======
+   Make the question column a grid with a fixed 1st row (the "band"),
+   so the input in row 2 NEVER moves, no matter how question text shrinks. */
+:root {
+  --qband-desktop: 160px;
+  --qband-tablet:  120px;
+}
+.question-col {
+  display: grid;
+  grid-template-rows: var(--qband-desktop) auto auto auto;
+  align-items: start;          /* already good */
+  justify-items: start;        /* ⬅️ was "center", change to "start" */
+  row-gap: 0;
+  text-align: left;            /* ⬅️ was "center" */
+}
+
+
+/* Place core elements into explicit rows */
+#question { 
+  grid-row: 1; 
+  margin: 0;
+  line-height: 1;                /* stable font metrics */
+  white-space: nowrap;           /* single line; script can auto-shrink font */
+  overflow: hidden; 
+  text-overflow: clip;
+  display: inline-block; 
+     justify-self: start;
+  text-align: left;/* stable inline box */
+}
+#answer   { grid-row: 2; justify-self: start;
+  text-align: left; }
+#timer    { grid-row: 3; }
+
+/* Shorter band on iPad/phones */
+@media (max-width: 834px) {
+  .question-col {
+    grid-template-rows: var(--qband-tablet) auto auto auto;
+    justify-items: start;   /* ensure left-justified here too */
+    text-align: left;
+  }
+}
+
+/* ---------- Keypad positioning + container width (desktop defaults) ---------- */
 :root { --pad-right: 360px; --pad-bottom: 340px; }
 #answer-pad {
   position: fixed;
@@ -175,7 +204,7 @@ body {
 @media (max-width: 700px) {
   .quiz-row { display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:40px; }
   .subtitle { font-size: 36px; }
-  .question { font-size: 80px; }
+  .question { font-size: 80px; }  /* visual size only — row height is fixed by grid */
   .answer-input { font-size: 72px; width: 280px; }
   #answer-pad .pad { grid-template-columns: repeat(4, 56px); grid-auto-rows: 56px; gap: 10px; }
   #answer-pad .pad-btn:not(.pad-enter):not(.pad-clear):not(.pad-back){ font-size:28px; }
@@ -185,23 +214,26 @@ body {
   :root { --pad-bottom: 260px; }
 }
 
-/* Answers grid visual styles (5 columns, smaller font; wrong = red) */
+/* ---------- Answers grid (5 columns, smaller; wrong = red) ---------- */
 .answers-grid { margin-top: 16px; }
 .answers-grid .answer-chip {
-  font-size: 20px;         /* smaller answers */
+  font-size: 20px;
   padding: 6px 10px;
   border-radius: 8px;
   background: #fff;
   border: 1px solid #ddd;
+  white-space: nowrap;      /* single line for each chip */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .answers-grid .answer-chip.correct {
   color: #2e7d32; background: #edf7ed; border-color: #c8e6c9;
 }
 .answers-grid .answer-chip.wrong {
-  color: #c62828; background: #fff1f1; border-color: #ffcdd2; /* whole item red */
+  color: #c62828; background: #fff1f1; border-color: #ffcdd2;
 }
 
-/* Belts grid/cards */
+/* ---------- Belts grid/cards ---------- */
 .belt-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; max-width:1100px; margin:0 auto 30px; padding:0 16px; }
 .belt-card { border:2px solid rgba(0,0,0,0.2); border-radius:16px; padding:18px 16px 20px; text-align:left; box-shadow:0 3px 10px rgba(0,0,0,0.06); }
 .belt-name { font-size:24px; font-weight:800; margin-bottom:6px; padding:6px 10px; border-radius:10px; display:inline-block; }
