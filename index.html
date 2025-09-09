@@ -1,24 +1,38 @@
-<!doctype html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dr B's Times Table Ninja</title>
-  <link rel="stylesheet" href="./styles.css?v=frontpage-GH35" />
+  <link rel="stylesheet" href="./styles.css?v=frontpage-GH55" />
 </head>
 <body>
 
   <!-- HOME -->
   <section id="home-screen" class="center" style="display:block;">
     <h1 class="title">Dr B's Times Table Ninja</h1>
+
     <div id="welcome-user"></div>
+
     <div class="name-row">
       <label class="visually-hidden" for="home-username">Your name</label>
-      <input id="home-username" class="big-input" placeholder="Type your name…" autocomplete="off" />
+      <input
+        id="home-username"
+        class="big-input"
+        placeholder="Type your name…"
+        autocomplete="off"
+        aria-label="Your name"
+      />
     </div>
-    <div class="choice-buttons">
-      <button class="choice" onclick="goMini()">Mini Tests</button>
-      <button class="choice" onclick="goNinja()">Ninja Belt</button>
+
+    <div class="choice-buttons" role="group" aria-label="Main choices">
+      <button id="btn-mini" class="choice" onclick="goMini()">Mini Tests</button>
+      <button id="btn-ninja" class="choice" onclick="goNinja()">Ninja Belt</button>
+    </div>
+
+    <!-- Title image under the buttons -->
+    <div class="home-hero">
+      <img src="./images/title-pic.png" alt="Dr B's Times Table Ninja" loading="lazy" />
     </div>
   </section>
 
@@ -26,7 +40,11 @@
   <section id="mini-screen" class="center" style="display:none;">
     <h2 class="subtitle">Dr B's Times Table Ninja — Mini Tests</h2>
     <div class="info-text">Choose a single times table and hit Start (always 50 questions).</div>
-    <div id="table-choices" class="choice-buttons"></div>
+
+    <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices">
+      <!-- table buttons 2×–12× are injected by JS -->
+    </div>
+
     <div class="choice-buttons">
       <button class="big-button primary" onclick="startQuiz()">Start Mini Test</button>
       <button class="big-button" onclick="goHome()">Back</button>
@@ -41,14 +59,14 @@
       <!-- 50Q belts -->
       <div class="belt-card white">
         <div class="belt-name">White Belt</div>
-        <div class="belt-desc">3× & 4×</div>
+        <div class="belt-desc">3× &amp; 4×</div>
         <div class="belt-meta">50 Questions</div>
         <button class="big-button primary" onclick="startWhiteBelt()">Start White Belt</button>
       </div>
 
       <div class="belt-card yellow">
         <div class="belt-name">Yellow Belt</div>
-        <div class="belt-desc">4× & 6×</div>
+        <div class="belt-desc">4× &amp; 6×</div>
         <div class="belt-meta">50 Questions</div>
         <button class="big-button primary" onclick="startYellowBelt()">Start Yellow Belt</button>
       </div>
@@ -62,21 +80,21 @@
 
       <div class="belt-card green">
         <div class="belt-name">Green Belt</div>
-        <div class="belt-desc">4× & 8×</div>
+        <div class="belt-desc">4× &amp; 8×</div>
         <div class="belt-meta">50 Questions</div>
         <button class="big-button primary" onclick="startGreenBelt()">Start Green Belt</button>
       </div>
 
       <div class="belt-card blue">
         <div class="belt-name">Blue Belt</div>
-        <div class="belt-desc">7× & 8×</div>
+        <div class="belt-desc">7× &amp; 8×</div>
         <div class="belt-meta">50 Questions</div>
         <button class="big-button primary" onclick="startBlueBelt()">Start Blue Belt</button>
       </div>
 
       <div class="belt-card pink">
         <div class="belt-name">Pink Belt</div>
-        <div class="belt-desc">7× & 9×</div>
+        <div class="belt-desc">7× &amp; 9×</div>
         <div class="belt-meta">50 Questions</div>
         <button class="big-button primary" onclick="startPinkBelt()">Start Pink Belt</button>
       </div>
@@ -147,24 +165,28 @@
   <!-- QUIZ -->
   <section id="quiz-screen" style="display:none;">
     <div id="quiz-container">
-      <h2 id="quiz-title" class="subtitle">Dr B's Times Table Ninjas</h2>
+      <h2 id="quiz-title" class="subtitle">Dr B's Times Table Ninja</h2>
       <div class="quiz-row">
         <div class="question-col">
-          <div id="question" class="question"></div>
-          <input id="answer" class="answer-input" inputmode="numeric" autocomplete="off" />
+          <div id="question" class="question" role="status" aria-live="polite"></div>
+
+          <label for="answer" class="visually-hidden">Your answer</label>
+          <input id="answer" class="answer-input" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
+
           <div id="timer" class="timer" aria-hidden="true"></div>
 
           <div class="choice-buttons" style="margin-top:18px;">
-            <button class="big-button" onclick="quitFromQuiz()">Quit</button>
+            <button class="big-button" onclick="quitFromQuiz()">Quit to Home</button>
           </div>
 
-          <div id="score" class="score"></div>
+          <div id="score" class="score" role="region" aria-label="Score and answers"></div>
         </div>
-        <div id="answer-pad"></div>
+
+        <div id="answer-pad" class="answer-pad" aria-label="On-screen number pad" role="group"></div>
       </div>
     </div>
   </section>
 
-  <script src="./script.js?v=frontpage-GH35"></script>
+  <script src="./script.js?v=frontpage-GH55"></script>
 </body>
 </html>
