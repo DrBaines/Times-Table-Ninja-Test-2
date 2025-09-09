@@ -362,7 +362,7 @@ function safeSubmit(){
 
 /* ====== Timer ====== */
 function startTimer(seconds){
-   quizStartTime = Date.now();
+   
   clearInterval(timerInterval);
   timerDeadline = Date.now() + seconds*1000;
   timerInterval = setInterval(()=>{
@@ -436,6 +436,7 @@ function preflightAndStart(questions, opts){
 
   ended = false;
   currentIndex = 0;
+   quizStartTime = Date.now();
   allQuestions = questions.slice();
   userAnswers = new Array(allQuestions.length).fill("");
 
@@ -627,11 +628,7 @@ function showAnswers(){
   const s = $("score"); 
   if (!s) return;
 
-  const html = buildAnswersHTML() + `
-    <div style="text-align:center;margin-top:16px;">
-      <button class="big-button" onclick="quitFromQuiz()">Quit</button>
-    </div>
-  `;
+  const html = buildAnswersHTML();
 
   // Remove the "Show answers" button and append the grid + Quit
   s.innerHTML = s.innerHTML.replace(/<button[^>]*showAnswers\([^)]*\)[^>]*>.*?<\/button>/i, "");
