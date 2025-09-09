@@ -36,7 +36,6 @@ body {
 .table-btn:hover { background:#f0f0f0; }
 
 #quiz-title { margin-top:10px; margin-bottom:20px; display:block; }
-.question { font-size: 120px; margin: 0 0 30px; }
 /* Fixed-height band so the answer box stays put */
 .question {
   font-size: 120px;
