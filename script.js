@@ -31,6 +31,7 @@ let timerInterval = null;
 let timerDeadline = 0;
 let desktopKeyHandler = null;
 let submitLockedUntil = 0;
+let quizStartTime = 0;
 
 /* ====== Safety net ====== */
 window.onerror = function (msg, src, line, col, err) {
@@ -361,6 +362,7 @@ function safeSubmit(){
 
 /* ====== Timer ====== */
 function startTimer(seconds){
+   quizStartTime = Date.now();
   clearInterval(timerInterval);
   timerDeadline = Date.now() + seconds*1000;
   timerInterval = setInterval(()=>{
@@ -587,6 +589,11 @@ window.printResults = printResults;
 
 function endQuiz(){
   teardownQuiz();
+   const elapsedMs = Date.now() - quizStartTime;
+const elapsedSec = Math.round(elapsedMs / 1000);
+const minutes = Math.floor(elapsedSec / 60);
+const seconds = elapsedSec % 60;
+const timeTaken = `${minutes}m ${seconds}s`;
   destroyKeypad();
 
   const qEl = $("question"); if (qEl) qEl.style.display = "none";
@@ -605,14 +612,15 @@ function endQuiz(){
   const s = $("score");
   if (s){
     s.innerHTML = `
-      <div class="result-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 14px;">
-        <button class="big-button secondary" onclick="printResults()" title="Print or save as PDF">Print / Save</button>
-        <div class="result-line" style="font-size:28px;">
-          <strong>${username}</strong> — Score: <strong>${correct} / ${allQuestions.length}</strong> — ${today}
-        </div>
-      </div>
-      <button class="big-button" onclick="showAnswers()">Show answers</button>
-    `;
+  <div class="result-line">
+    <strong>Score =</strong> ${correct} / ${allQuestions.length}
+  </div>
+  <div class="result-line">
+    <strong>Time taken:</strong> ${timeTaken}
+  </div>
+  <button class="big-button" onclick="showAnswers()">Show answers</button>
+  <button class="big-button" onclick="quitFromQuiz()">Quit to Home</button>
+`;
   }
 }
 function showAnswers(){
