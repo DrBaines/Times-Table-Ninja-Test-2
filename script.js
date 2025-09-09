@@ -53,9 +53,6 @@ function isTabletLike(){
 }
 
 /**
- * Ensure the question element sits inside a fixed-height band so
- * the answer input stays at a constant Y-position.
- * Returns the band element.
  * Ensure the question element sits inside a rigid, fixed-height band.
  * This prevents any vertical movement of the answer input below.
  */
@@ -66,7 +63,6 @@ function ensureQuestionBand(){
   // Already wrapped?
   if (q.parentElement && q.parentElement.id === "question-band") return q.parentElement;
 
-  // Create band and move #question into it
   // Create a rigid, non-flexing band and move #question into it
   const band = document.createElement("div");
   band.id = "question-band";
@@ -74,8 +70,6 @@ function ensureQuestionBand(){
   band.style.alignItems = "center";
   band.style.justifyContent = "center";
   band.style.width = "100%";
-  band.style.overflow = "hidden";   // prevents growth/line-wrap push
-  band.style.margin = "0 0 20px 0"; // space above answer box
   band.style.overflow = "hidden";   // never let content affect height
   band.style.margin = "0 0 20px 0";
   band.style.flex = "0 0 auto";     // never flex or shrink
@@ -84,7 +78,6 @@ function ensureQuestionBand(){
   q.parentElement.insertBefore(band, q);
   band.appendChild(q);
 
-  // Make sure the question itself is single-line by default
   // Make the question itself fully single-line & non-clipping
   q.style.margin = "0";             // kill default margins that can nudge height
   q.style.display = "inline-block"; // stable inline box
@@ -93,12 +86,10 @@ function ensureQuestionBand(){
   q.style.overflow = "hidden";
   q.style.textOverflow = "clip";
 
-  layoutQuestionBand(); // set initial height
   layoutQuestionBand(); // set initial rigid height
   return band;
 }
 
-/** Set band height based on device width */
 /** Set band height AND lock flex-basis to the same height (no movement) */
 function layoutQuestionBand(){
   const band = document.getElementById("question-band");
@@ -452,12 +443,10 @@ function showQuestion(){
     return;
   }
 
-  // Ensure band exists & is sized
   // Ensure rigid band exists & is sized BEFORE we set text
   ensureQuestionBand();
   layoutQuestionBand();
 
-  // Put text, then shrink-to-fit on a single line
   // Put text, then lock margins/metrics, then fit-to-line
   qEl.textContent = qObj.q;
 
