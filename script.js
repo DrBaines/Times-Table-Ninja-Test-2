@@ -1,457 +1,638 @@
-/* =========================================================
-   Times Tables Trainer - Script (frontpage-36)
-   - NEW Silver Belt: display expanded factors (no 10^k in UI)
-   - Bronze Belt with triple underscores for missing numbers
-   - Purple/Red: 2–10, fully mixed
-   - Black: 2–12, 100Q, fully mixed
-   ========================================================= */
+/* Times Tables Trainer — script.js (frontpage-GH36)
+   - Answer input stays fixed (question shown in a fixed-height band)
+   - Gold/Silver/Platinum/Obsidian questions forced to a single line, auto-fit smaller
+   - Answers grid single-line, smaller font
+   - Titles: "Dr B TTN — {Belt}" (and Mini)
+   - iPad OSK suppression; robust nav; keypad
+*/
 
-/******** Google Sheet endpoint (multi-device) ********/
-const SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbyIuCIgbFisSKqA0YBtC5s5ATHsHXxoqbZteJ4en7hYrf4AXmxbnMOUfeQ2ERZIERN-/exec";
-const SHEET_SECRET   = "Banstead123";
+/* ====== Config ====== */
+const SHEET_ENDPOINT = ""; // demo/offline
+const SHEET_SECRET   = "";
 
-/********* Offline/refresh-safe queue for submissions *********/
-let pendingSubmissions = JSON.parse(localStorage.getItem("pendingSubmissions") || "[]");
-let isFlushing = false;
-function saveQueue_(){ localStorage.setItem("pendingSubmissions", JSON.stringify(pendingSubmissions)); }
-function queueSubmission(payload){
-  if (!payload || !payload.id || !payload.table) return;
-  if (pendingSubmissions.some(p => p.id === payload.id)) return;
-  pendingSubmissions.push(payload); saveQueue_();
-}
-async function flushQueue(){
-  if (isFlushing || !pendingSubmissions.length) return;
-  isFlushing = true;
-  const remaining = [];
-  for (const payload of pendingSubmissions){
-    try {
-      await fetch(SHEET_ENDPOINT, { method:"POST", mode:"no-cors",
-        body:new Blob([JSON.stringify(payload)], { type:"text/plain;charset=utf-8" }) });
-    } catch (e){ remaining.push(payload); }
-  }
-  pendingSubmissions = remaining; saveQueue_(); isFlushing = false;
-}
-window.addEventListener("online", flushQueue);
-document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible") flushQueue(); });
-window.addEventListener("DOMContentLoaded", flushQueue);
+const QUIZ_SECONDS_DEFAULT = 300; // 5 mins hidden timer
+const QUEUE_KEY = "tttQueueV1";
+const NAME_KEY  = "tttName";
 
-/******************** STATE ********************/
-let selectedBase = null;
-let quizType = 'single';         // 'single' | 'ninja'
-let ninjaName = '';
-const QUIZ_TIME = 300;           // 5 minutes
-const MAX_ANSWER_LEN = 4;
+/* ====== State ====== */
+let modeLabel = "";
+let quizSeconds = QUIZ_SECONDS_DEFAULT;
 
 let allQuestions = [];
-let current = 0;
-let score = 0;
-let time = QUIZ_TIME;
-let timer = null;
-let timerStarted = false;
-let ended = false;
 let userAnswers = [];
-let username = "";
-let submitLock = false;
+let currentIndex = 0;
+let ended = false;
+
+let timerInterval = null;
+let timerDeadline = 0;
 let desktopKeyHandler = null;
+let submitLockedUntil = 0;
 
-/******************** DOM GETTERS ********************/
-const $ = (id) => document.getElementById(id);
-const getQEl     = () => $("question");
-const getAnswer  = () => $("answer");
-const getTimerEl = () => $("timer");
-const getScoreEl = () => $("score");
-const getPadEl   = () => $("answer-pad");
-const getHome    = () => $("home-screen");
-const getMini    = () => $("mini-screen");
-const getNinja   = () => $("ninja-screen");
-const getQuiz    = () => $("quiz-container");
+/* ====== Safety net ====== */
+window.onerror = function (msg, src, line, col, err) {
+  try { console.error("[fatal]", msg, "at", src + ":" + line + ":" + col, err); } catch {}
+  try { setScreen("ninja-screen"); } catch {}
+};
 
-/******************** PLATFORM (force desktop typing) ********************/
-const FORCE_DESKTOP = true;
-function isIOSLike(){ if (FORCE_DESKTOP) return false; const ua=navigator.userAgent||''; const iOSUA=/iPad|iPhone|iPod/.test(ua); const iPadAsMac=(navigator.platform==="MacIntel"||/Mac/.test(ua))&&navigator.maxTouchPoints>1; return (iOSUA||iPadAsMac)&&navigator.maxTouchPoints>0; }
-const isiOS = isIOSLike();
-function preventSoftKeyboard(e){ const a=getAnswer(); if(a && a.readOnly){ e.preventDefault(); a.blur(); }}
+/* ====== Utils ====== */
+const $ = (id)=>document.getElementById(id);
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+const randInt=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
 
-/******************** HELPERS ********************/
-function show(el){ if(el) el.style.display="block"; }
-function hide(el){ if(el) el.style.display="none"; }
-function clearResultsUI(){ const s=getScoreEl(); if(s) s.innerHTML=""; }
-function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+/* ==== Fixed-position question band + auto-fit helpers ==== */
 
-/******************** NAME PERSISTENCE ********************/
-(function bootstrapName(){
-  const saved = localStorage.getItem('ttt_username') || '';
-  if (saved) {
-    username = saved;
-    const input = $('home-username'); if (input) input.value = saved;
-    const hello = $('hello-user'); if (hello) hello.textContent = `Hello, ${username}!`;
+// Band heights (tweak to taste)
+// Band heights (tweak to taste)
+const BAND_HEIGHT_DESKTOP = 160;
+const BAND_HEIGHT_TABLET  = 120;
+
+// Tablet-ish breakpoint
+function isTabletLike(){
+  return window.matchMedia && matchMedia("(max-width: 834px)").matches;
+}
+
+/**
+ * Ensure the question element sits inside a fixed-height band so
+ * the answer input stays at a constant Y-position.
+ * Returns the band element.
+ * Ensure the question element sits inside a rigid, fixed-height band.
+ * This prevents any vertical movement of the answer input below.
+ */
+function ensureQuestionBand(){
+  const q = document.getElementById("question");
+  if (!q) return null;
+
+  // Already wrapped?
+  if (q.parentElement && q.parentElement.id === "question-band") return q.parentElement;
+
+  // Create band and move #question into it
+  // Create a rigid, non-flexing band and move #question into it
+  const band = document.createElement("div");
+  band.id = "question-band";
+  band.style.display = "flex";
+  band.style.alignItems = "center";
+  band.style.justifyContent = "center";
+  band.style.width = "100%";
+  band.style.overflow = "hidden";   // prevents growth/line-wrap push
+  band.style.margin = "0 0 20px 0"; // space above answer box
+  band.style.overflow = "hidden";   // never let content affect height
+  band.style.margin = "0 0 20px 0";
+  band.style.flex = "0 0 auto";     // never flex or shrink
+
+  // Insert band right before question and move question inside it
+  q.parentElement.insertBefore(band, q);
+  band.appendChild(q);
+
+  // Make sure the question itself is single-line by default
+  // Make the question itself fully single-line & non-clipping
+  q.style.margin = "0";             // kill default margins that can nudge height
+  q.style.display = "inline-block"; // stable inline box
+  q.style.lineHeight = "1";         // stable metrics
+  q.style.whiteSpace = "nowrap";
+  q.style.overflow = "hidden";
+  q.style.textOverflow = "clip";
+
+  layoutQuestionBand(); // set initial height
+  layoutQuestionBand(); // set initial rigid height
+  return band;
+}
+
+/** Set band height based on device width */
+/** Set band height AND lock flex-basis to the same height (no movement) */
+function layoutQuestionBand(){
+  const band = document.getElementById("question-band");
+  if (!band) return;
+  const h = isTabletLike() ? BAND_HEIGHT_TABLET : BAND_HEIGHT_DESKTOP;
+  band.style.height = h + "px";
+  band.style.flexBasis = h + "px";  // double pin: height + basis
+}
+
+/**
+ * Shrink font until #question fits on one line within its container.
+ * startPx: starting font size in px (e.g., 110)
+ * minPx:   do not shrink below this (e.g., 56 desktop / 44 tablet)
+ */
+function fitSingleLine(qEl, startPx, minPx){
+  if (!qEl) return;
+  const step = 4;
+  let size = startPx;
+
+  qEl.style.whiteSpace = "nowrap";
+  qEl.style.overflow = "hidden";
+  qEl.style.textOverflow = "clip";
+  qEl.style.fontSize = size + "px";
+
+  let tries = 0, maxTries = 30;
+  while (qEl.scrollWidth > qEl.clientWidth && size > minPx && tries++ < maxTries){
+    size -= step;
+    qEl.style.fontSize = size + "px";
   }
-})();
-function setUsernameFromHome(){ const name=$('home-username')?.value.trim()||""; if(name){ username=name; try{ localStorage.setItem('ttt_username', username);}catch{} }}
-
-/******************** NAVIGATION ********************/
-function goHome(){ clearResultsUI(); hide(getMini()); hide(getNinja()); hide(getQuiz()); show(getHome()); }
-function goMini(){ setUsernameFromHome(); const hello=$('hello-user'); if(hello) hello.textContent = username ? `Hello, ${username}!` : ""; clearResultsUI(); hide(getHome()); hide(getNinja()); hide(getQuiz()); show(getMini()); }
-function goNinja(){ setUsernameFromHome(); clearResultsUI(); hide(getHome()); hide(getMini()); hide(getQuiz()); show(getNinja()); }
-function quitFromQuiz(){ if (timer){ clearInterval(timer); timer=null; } clearResultsUI(); hide(getQuiz()); show(getHome()); }
-
-/******************** UI BUILDERS ********************/
-const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
-function buildTableButtons(){
-  const container = $('table-choices'); if (!container) return;
-  container.innerHTML = '';
-  TABLES.forEach(b=>{
-    const btn=document.createElement('button');
-    btn.type="button"; btn.className="choice"; btn.id=`btn-${b}`; btn.textContent=`${b}×`;
-    btn.addEventListener('click', ()=>selectTable(b));
-    container.appendChild(btn);
-  });
-}
-document.addEventListener('DOMContentLoaded', buildTableButtons);
-
-/* Build keypad once */
-function buildKeypadIfNeeded(){
-  const pad = getPadEl(); const a = getAnswer(); if(!pad || !a) return;
-  pad.classList.add('calc-pad');
-  if (pad.childElementCount === 0){
-    const labels = ['7','8','9','⌫','4','5','6','Enter','1','2','3','0','Clear'];
-    const pos = {'7':'key-7','8':'key-8','9':'key-9','⌫':'key-back','4':'key-4','5':'key-5','6':'key-6','Enter':'key-enter','1':'key-1','2':'key-2','3':'key-3','0':'key-0','Clear':'key-clear'};
-    labels.forEach(label=>{
-      const btn=document.createElement('button'); btn.type='button'; btn.textContent=label;
-      btn.setAttribute('aria-label', label==='⌫'?'Backspace':label);
-      if (label==='Enter') btn.classList.add('calc-btn--enter');
-      if (label==='Clear') btn.classList.add('calc-btn--clear');
-      if (label==='⌫')     btn.classList.add('calc-btn--back');
-      btn.classList.add(pos[label]);
-      btn.addEventListener('pointerdown',(e)=>{ e.preventDefault(); e.stopPropagation(); if (isiOS) getAnswer()?.blur(); handlePadPress(label); });
-      pad.appendChild(btn);
-    });
-  }
-  pad.style.display = "grid";
-}
-function handlePadPress(label){
-  const a=getAnswer(); if(!a) return;
-  switch(label){
-    case 'Clear': a.value=''; a.dispatchEvent(new Event('input',{bubbles:true})); break;
-    case '⌫': a.value=a.value.slice(0,-1); a.dispatchEvent(new Event('input',{bubbles:true})); break;
-    case 'Enter': safeSubmit(); break;
-    default:
-      if (/^\d$/.test(label)){
-        if (a.value.length>=MAX_ANSWER_LEN) return;
-        a.value += label;
-        try { a.setSelectionRange(a.value.length, a.value.length); } catch {}
-        a.dispatchEvent(new Event('input',{bubbles:true}));
-      }
-  }
 }
 
-/******************** SELECTION ********************/
-function selectTable(base){
-  selectedBase = base;
-  TABLES.forEach(b=>{ const el=$(`btn-${b}`); if(el) el.classList.toggle('selected', b===base); });
-}
+// Keep a resize ref so we can unhook cleanly
+let _refitOnResize = null;
 
-/******************** QUESTION BUILDERS ********************/
-function block30_single(base){
-  const mul1=[]; for(let i=0;i<=12;i++) mul1.push({q:`${i} × ${base}`, a:base*i});
-  const mul2=[]; for(let i=0;i<=12;i++) mul2.push({q:`${base} × ${i}`, a:base*i});
-  const div =[]; for(let i=0;i<=12;i++) div.push({q:`${base*i} ÷ ${base}`, a:i});
-  const set1 = mul1.sort(()=>0.5-Math.random()).slice(0,10);
-  const set2 = mul2.sort(()=>0.5-Math.random()).slice(0,10);
-  const set3 = div .sort(()=>0.5-Math.random()).slice(0,10);
-  return [...set1, ...set2, ...set3];
-}
-function block30_mixed(bases){
-  const pick = () => bases[Math.floor(Math.random()*bases.length)];
-  const r = () => Math.floor(Math.random()*13);
-  const a1=[], a2=[], a3=[];
-  for(let k=0;k<10;k++){ const b=pick(), i=r(); a1.push({q:`${i} × ${b}`, a:i*b}); }
-  for(let k=0;k<10;k++){ const b=pick(), i=r(); a2.push({q:`${b} × ${i}`, a:i*b}); }
-  for(let k=0;k<10;k++){ const b=pick(), i=r(); a3.push({q:`${b*i} ÷ ${b}`, a:i}); }
-  return [...a1, ...a2, ...a3];
-}
-function extra20_mixed(bases){
-  const pick = () => bases[Math.floor(Math.random()*bases.length)];
-  const r = () => Math.floor(Math.random()*13);
-  const out = [];
-  for (let k=0;k<20;k++){
-    const type = Math.floor(Math.random()*3);
-    const b = pick(); const i = r();
-    if (type === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
-    else if (type === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
-    else { out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
-  }
-  return out;
-}
-function buildMixedCustom(bases, total, maxFactor = 12){
-  const pick = () => bases[Math.floor(Math.random()*bases.length)];
-  const r = () => Math.floor(Math.random() * (maxFactor + 1));
-  const out = [];
-  for (let k=0;k<total;k++){
-    const t = Math.floor(Math.random()*3);
-    const b = pick(); const i = r();
-    if (t === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
-    else if (t === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
-    else { out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
-  }
-  return shuffle(out);
-}
-/* Bronze: normal + missing-number */
-function buildMixedWithMissing(bases, total, maxFactor = 12, missingRatio = 0.5){
-  const pick = () => bases[Math.floor(Math.random()*bases.length)];
-  const r = () => Math.floor(Math.random() * (maxFactor + 1));
-  const out = [];
-  for (let k=0;k<total;k++){
-    const useMissing = Math.random() < missingRatio;
-    const b = pick(); const i = r();
-    if (!useMissing){
-      const t = Math.floor(Math.random()*3);
-      if (t === 0){ out.push({ q:`${i} × ${b}`, a:i*b }); }
-      else if (t === 1){ out.push({ q:`${b} × ${i}`, a:i*b }); }
-      else { out.push({ q:`${b*i} ÷ ${b}`, a:i }); }
-    } else {
-      const t = Math.floor(Math.random()*4);
-      if (t === 0){ out.push({ q:`___ × ${b} = ${i*b}`, a:i }); }
-      else if (t === 1){ out.push({ q:`${b} × ___ = ${i*b}`, a:i }); }
-      else if (t === 2){ out.push({ q:`___ ÷ ${b} = ${i}`, a:i*b }); }
-      else { out.push({ q:`${b*i} ÷ ___ = ${i}`, a:b }); }
-    }
-  }
-  return shuffle(out);
-}
-/* Silver: display expanded factors (A×B) and c ÷ A */
-function buildSilverQuestions(total){
-  const bases = [2,3,4,5,6,7,8,9,10,11,12];
-  const pow = [0,1];
-  const out = [];
-  for (let n=0;n<total;n++){
-    const a = bases[Math.floor(Math.random()*bases.length)];
-    const b = bases[Math.floor(Math.random()*bases.length)];
-    const k = pow[Math.floor(Math.random()*pow.length)];
-    const m = pow[Math.floor(Math.random()*pow.length)];
-    const A = a * Math.pow(10, k);  // expanded (e.g., 20)
-    const B = b * Math.pow(10, m);  // expanded (e.g., 300)
-    const c = A * B; // integer
+/* ====== Touch detection & iPad keyboard suppression ====== */
+const IS_TOUCH = ((('ontouchstart' in window) || (navigator.maxTouchPoints > 0)))
+                 && window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
 
-    if (Math.random() < 0.5){
-      out.push({ q:`${A} × ${B}`, a:c });
-    } else {
-      out.push({ q:`${c} ÷ ${A}`, a:B });
-    }
-  }
-  return shuffle(out);
-}
-
-/******************** QUIZ FLOW ********************/
-function startQuiz(){ 
-  quizType='single';
-  if(!selectedBase){ alert("Please choose a times table (2×–12×)."); return; }
-  preflightAndStart(()=>block30_single(selectedBase).concat(extra20_mixed([selectedBase])), `Practising ${selectedBase}×`, QUIZ_TIME);
-}
-
-/* 50Q belts */
-function startWhiteBelt(){  quizType='ninja'; ninjaName='White Ninja Belt';  preflightAndStart(()=>block30_mixed([3,4]).concat(extra20_mixed([3,4])),       `White Ninja Belt`, QUIZ_TIME); }
-function startYellowBelt(){ quizType='ninja'; ninjaName='Yellow Ninja Belt'; preflightAndStart(()=>block30_mixed([4,6]).concat(extra20_mixed([4,6])),       `Yellow Ninja Belt`, QUIZ_TIME); }
-function startOrangeBelt(){ quizType='ninja'; ninjaName='Orange Ninja Belt'; preflightAndStart(()=>block30_mixed([2,3,4,5,6]).concat(extra20_mixed([2,3,4,5,6])), `Orange Ninja Belt`, QUIZ_TIME); }
-function startGreenBelt(){  quizType='ninja'; ninjaName='Green Ninja Belt';  preflightAndStart(()=>block30_mixed([4,8]).concat(extra20_mixed([4,8])),       `Green Ninja Belt`, QUIZ_TIME); }
-function startBlueBelt(){   quizType='ninja'; ninjaName='Blue Ninja Belt';   preflightAndStart(()=>block30_mixed([7,8]).concat(extra20_mixed([7,8])),       `Blue Ninja Belt`, QUIZ_TIME); }
-function startPinkBelt(){   quizType='ninja'; ninjaName='Pink Ninja Belt';   preflightAndStart(()=>block30_mixed([7,9]).concat(extra20_mixed([7,9])),       `Pink Ninja Belt`, QUIZ_TIME); }
-
-/* Fully mixed higher belts */
-function startPurpleBelt(){ quizType='ninja'; ninjaName='Purple Ninja Belt'; preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 50, 10),  `Purple Ninja Belt`, QUIZ_TIME); }
-function startRedBelt(){    quizType='ninja'; ninjaName='Red Ninja Belt';    preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10], 100, 10), `Red Ninja Belt`, QUIZ_TIME); }
-function startBlackBelt(){  quizType='ninja'; ninjaName='Black Ninja Belt';  preflightAndStart(()=>buildMixedCustom([2,3,4,5,6,7,8,9,10,11,12], 100, 12), `Black Ninja Belt`, QUIZ_TIME); }
-function startBronzeBelt(){ quizType='ninja'; ninjaName='Bronze Ninja Belt'; preflightAndStart(()=>buildMixedWithMissing([2,3,4,5,6,7,8,9,10,11,12], 100, 12, 0.5), `Bronze Ninja Belt`, QUIZ_TIME); }
-function startSilverBelt(){ quizType='ninja'; ninjaName='Silver Ninja Belt'; preflightAndStart(()=>buildSilverQuestions(100), `Silver Ninja Belt`, QUIZ_TIME); }
-
-function preflightAndStart(qBuilder, welcomeText, timerSeconds){
-  clearResultsUI();
-  if(!username){
-    const name=$('home-username')?.value.trim() || "";
-    if(!name){ alert("Please enter your name on the home page first."); return; }
-    username=name; try{ localStorage.setItem('ttt_username', username); }catch{}
-  }
-
-  if(timer){ clearInterval(timer); timer=null; }
-  time=timerSeconds; timerStarted=false; ended=false; score=0; current=0; userAnswers=[]; submitLock=false;
-  const t=getTimerEl(); const m=Math.floor(time/60), s=time%60; if(t) t.textContent=`Time left: ${m}:${s<10?"0":""}${s}`;
-
-  allQuestions = qBuilder();
-
-  hide(getHome()); hide(getMini()); hide(getNinja()); show(getQuiz());
-  const welcome=$("welcome-user"); if(welcome) welcome.textContent=welcomeText;
-
-  // Pale background per belt
-  const quiz = getQuiz();
-  let bg = "#eef";
-  if (quizType==="ninja") {
-    if (ninjaName.includes("White"))  bg = "#fafafa";
-    else if (ninjaName.includes("Yellow")) bg = "#fffde7";
-    else if (ninjaName.includes("Orange")) bg = "#fff3e0";
-    else if (ninjaName.includes("Green"))  bg = "#e8f5e9";
-    else if (ninjaName.includes("Blue"))   bg = "#e3f2fd";
-    else if (ninjaName.includes("Pink"))   bg = "#fce4ec";
-    else if (ninjaName.includes("Purple")) bg = "#ede7f6";
-    else if (ninjaName.includes("Red"))    bg = "#ffebee";
-    else if (ninjaName.includes("Black"))  bg = "#f5f5f5";
-    else if (ninjaName.includes("Bronze")) bg = "#f3e5d0";
-    else if (ninjaName.includes("Silver")) bg = "#eeeeee";
-  }
-  if (quiz) quiz.style.background = bg;
-
-  const a=getAnswer();
-  if(a){
-    a.value=""; a.disabled=false; a.style.display="inline-block";
-    if(!isiOS){
-      a.readOnly=false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
-      a.addEventListener('input', ()=>{ a.value = a.value.replace(/\D+/g,'').slice(0,MAX_ANSWER_LEN); });
-      setTimeout(()=>a.focus(),0);
-
-      desktopKeyHandler = (e)=>{
-        const quizVisible = getQuiz() && getQuiz().style.display !== "none";
-        if(!quizVisible || ended) return;
-        if (!a || a.style.display==="none") return;
-        if (/^\d$/.test(e.key)){
-          e.preventDefault();
-          if (a.value.length < MAX_ANSWER_LEN){ a.value += e.key; a.dispatchEvent(new Event('input',{bubbles:true})); }
-          try{ a.setSelectionRange(a.value.length, a.value.length); }catch{}
-        } else if (e.key==='Backspace' || e.key==='Delete'){
-          e.preventDefault();
-          a.value = a.value.slice(0,-1);
-          a.dispatchEvent(new Event('input',{bubbles:true}));
-        } else if (e.key==='Enter'){
-          e.preventDefault();
-          safeSubmit();
-        }
-      };
-      document.addEventListener('keydown', desktopKeyHandler);
-    } else {
-      a.readOnly=true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
-      a.addEventListener('touchstart', preventSoftKeyboard, {passive:false});
-      a.addEventListener('mousedown',  preventSoftKeyboard, {passive:false});
-      a.addEventListener('focus',      preventSoftKeyboard, true);
-    }
-  }
-
-  const pad=getPadEl(); if(pad){ pad.innerHTML=''; pad.style.display='grid'; }
-  buildKeypadIfNeeded();
-  showQuestion();
-}
-
-function showQuestion(){
-  const q=getQEl(); const a=getAnswer();
-  if(current < allQuestions.length && !ended){
-    if(q) q.textContent = allQuestions[current].q;
-    if(a){
-      a.value=""; a.disabled=false; a.style.display="inline-block";
-      if(!isiOS){
-        a.readOnly=false; a.removeAttribute('tabindex'); a.setAttribute('inputmode','numeric');
-        setTimeout(()=>a.focus(),0);
-      } else {
-        a.readOnly=true; a.setAttribute('inputmode','none'); a.setAttribute('tabindex','-1'); a.blur();
-      }
-    }
-    const pad=getPadEl(); if(pad) pad.style.display="grid";
+function suppressOSK(aEl, enable) {
+  if (!aEl) return;
+  if (enable) {
+    aEl.setAttribute('readonly', '');
+    aEl.setAttribute('inputmode', 'none');
+    aEl._nokb = (e)=>{ try{ e.preventDefault(); }catch{} aEl.blur(); };
+    aEl.addEventListener('focus', aEl._nokb, {passive:false});
+    aEl.addEventListener('pointerdown', aEl._nokb, {passive:false});
   } else {
-    endQuiz();
+    aEl.removeAttribute('readonly');
+    aEl.removeAttribute('inputmode');
+    if (aEl._nokb){
+      aEl.removeEventListener('focus', aEl._nokb);
+      aEl.removeEventListener('pointerdown', aEl._nokb);
+      aEl._nokb = null;
+    }
   }
 }
 
-/******************** SUBMIT & TIMER ********************/
-function safeSubmit(){ if (submitLock || ended) return; submitLock = true; handleKey({ key:'Enter' }); setTimeout(()=>{ submitLock = false; }, 120); }
-function handleKey(e){
-  if (e.key !== "Enter" || ended) return;
-  if (!timerStarted){ startTimer(); timerStarted = true; }
-  const a = getAnswer();
-  const raw = (a?.value || "").trim();
-  const userAns = raw === "" ? NaN : parseInt(raw, 10);
-  userAnswers.push(isNaN(userAns) ? "" : userAns);
-  if (!isNaN(userAns) && userAns === allQuestions[current].a) score++;
-  current++; showQuestion();
-}
-function startTimer(){
-  if (timer) clearInterval(timer);
-  timer = setInterval(()=>{
-    time--;
-    const t=getTimerEl(); const m=Math.floor(time/60), s=time%60;
-    if (t) t.textContent = `Time left: ${m}:${s<10?"0":""}${s}`;
-    if (time <= 0) endQuiz();
-  }, 1000);
-}
-
-/******************** END & SUBMIT ********************/
-function endQuiz(){
-  if (ended) return; ended = true;
-  if (timer){ clearInterval(timer); timer=null; }
-  if (desktopKeyHandler){ document.removeEventListener('keydown', desktopKeyHandler); desktopKeyHandler=null; }
-  const q=getQEl(), a=getAnswer(), t=getTimerEl(), pad=getPadEl(), s=getScoreEl();
-  if(q) q.textContent=""; if(a) a.style.display="none"; if(pad) pad.style.display="none"; if(t) t.style.display="none";
-  if(a){
-    a.readOnly=false; a.setAttribute('inputmode','numeric'); a.removeAttribute('tabindex');
-    a.removeEventListener('touchstart', preventSoftKeyboard);
-    a.removeEventListener('mousedown',  preventSoftKeyboard);
-    a.removeEventListener('focus',      preventSoftKeyboard, true);
+/* ====== Navigation ====== */
+function setScreen(id) {
+  const screens = ["home-screen","mini-screen","ninja-screen","quiz-screen","quiz-container"];
+  let target = id;
+  if (!document.getElementById(target)) {
+    if (id === "quiz-screen" && document.getElementById("quiz-container")) target = "quiz-container";
+    else if (id === "quiz-container" && document.getElementById("quiz-screen")) target = "quiz-screen";
   }
-  const asked = Math.min(current, allQuestions.length);
-  const total = allQuestions.length;
-  if (s){
-    s.innerHTML = `${username}, you scored ${score}/${total} <br><br>
-      <button id="btn-show-answers" style="font-size:32px; padding:15px 40px;">Click to display answers</button>`;
-    const btn = document.getElementById('btn-show-answers'); if (btn) btn.onclick = showAnswers;
+  for (let i=0;i<screens.length;i++){
+    const s = screens[i], el = $(s);
+    if (!el) continue;
+    if ((target === "quiz-screen" || target === "quiz-container") && (s === "quiz-screen" || s === "quiz-container")) {
+      el.style.display = "block";
+    } else {
+      el.style.display = (s === target ? "block" : "none");
+    }
   }
-  const submissionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const tableStr = (quizType==='single') ? `${selectedBase}x` : ninjaName;
-  const uaSafe = String(navigator.userAgent || '').slice(0, 180);
-  const payload = { id:submissionId, secret:SHEET_SECRET, table:tableStr, name:username,
-                    score, asked, total, date:new Date().toISOString(), device:uaSafe };
-  if (!payload.id || !payload.table) return;
-  queueSubmission(payload); flushQueue();
+  try { document.body.setAttribute("data-screen", target); } catch {}
 }
-
-/******************** ANSWER REVIEW ********************/
-function showAnswers(){
-  const s=getScoreEl(); if(!s) return;
-  let html = `
-    <div style="
-      display:grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px;
-      justify-items: start;
-      max-width: 1200px;
-      margin: 20px auto;
-    ">
-  `;
-  allQuestions.forEach((q,i)=>{
-    const userAns = (userAnswers[i]!==undefined && userAnswers[i]!=="") ? userAnswers[i] : "—";
-    const correct = (userAnswers[i]===q.a);
-    const color = correct ? "green" : "red";
-    html += `
-      <div style="font-size:22px; font-weight:bold; color:${color}; text-align:left;">
-        ${q.q} = ${userAns}
-      </div>
-    `;
-  });
-  html += "</div>";
-  s.innerHTML += html;
+function goHome(){
+  const s = $("score"); if (s) s.innerHTML = "";
+  const q = $("question"); if (q){ q.textContent=""; q.style.display=""; }
+  const a = $("answer"); if (a){ a.value=""; a.style.display=""; suppressOSK(a, false); }
+  setScreen("home-screen");
 }
-
-/******************** EXPORTS ********************/
+function goMini(){
+  const nameInput = $("home-username");
+  if (nameInput){
+    const val = (nameInput.value || "").trim();
+    if (val){ localStorage.setItem(NAME_KEY, val); }
+  }
+  buildTableButtons();
+  setScreen("mini-screen");
+}
+function goNinja(){
+  const nameInput = $("home-username");
+  if (nameInput){
+    const val = (nameInput.value || "").trim();
+    if (val){ localStorage.setItem(NAME_KEY, val); }
+  }
+  setScreen("ninja-screen");
+}
+window.setScreen = setScreen;
 window.goHome = goHome;
 window.goMini = goMini;
 window.goNinja = goNinja;
-window.quitFromQuiz = quitFromQuiz;
-window.selectTable = selectTable;
-window.startQuiz   = startQuiz;
-window.handleKey   = handleKey;
 
-window.startWhiteBelt  = startWhiteBelt;
-window.startYellowBelt = startYellowBelt;
-window.startOrangeBelt = startOrangeBelt;
-window.startGreenBelt  = startGreenBelt;
-window.startBlueBelt   = startBlueBelt;
-window.startPinkBelt   = startPinkBelt;
-window.startPurpleBelt = startPurpleBelt;
-window.startRedBelt    = startRedBelt;
-window.startBlackBelt  = startBlackBelt;
-window.startBronzeBelt = startBronzeBelt;
-window.startSilverBelt = startSilverBelt;
+/* ====== Mini Tests ====== */
+let selectedBase = 2;
+function buildTableButtons(){
+  const wrap = $("table-choices"); if(!wrap) return;
+  let html = "";
+  for (let b=2;b<=12;b++){ html += `<button class="table-btn" onclick="selectTable(${b})">${b}×</button>`; }
+  wrap.innerHTML = html;
+}
+function selectTable(b){ selectedBase = clamp(b,2,12); }
+function buildMiniQuestions(base, total){
+  const out = [];
+  for (let i=1;i<=10;i++) out.push({ q:`${i} × ${base}`, a:i*base });
+  for (let i=1;i<=10;i++) out.push({ q:`${base} × ${i}`, a:base*i });
+  for (let i=1;i<=10;i++) out.push({ q:`${base*i} ÷ ${base}`, a:i });
+  const mix = [];
+  for (let i=0;i<20;i++){
+    const k = randInt(1,10); const t = randInt(1,3);
+    if (t===1) mix.push({ q:`${k} × ${base}`, a:k*base });
+    else if (t===2) mix.push({ q:`${base} × ${k}`, a:base*k });
+    else mix.push({ q:`${base*k} ÷ ${base}`, a:k });
+  }
+  return out.concat(shuffle(mix)).slice(0,total);
+}
+function startQuiz(){
+  modeLabel = `Mini ${selectedBase}×`;
+  quizSeconds = QUIZ_SECONDS_DEFAULT;
+  preflightAndStart(buildMiniQuestions(selectedBase, 50));
+}
+window.startQuiz = startQuiz;
+window.buildTableButtons = buildTableButtons;
+window.selectTable = selectTable;
+
+/* ====== Ninja Belt question builders ====== */
+function buildMixedBases(bases,total){
+  const out = [];
+  for (let i=0;i<total;i++){
+    const base = bases[i % bases.length];
+    const k = randInt(1,10); const t = randInt(1,3);
+    if (t===1) out.push({ q:`${k} × ${base}`, a:k*base });
+    else if (t===2) out.push({ q:`${base} × ${k}`, a:base*k });
+    else out.push({ q:`${base*k} ÷ ${base}`, a:k });
+  }
+  return shuffle(out).slice(0,total);
+}
+function buildFullyMixed(total, range){
+  const out = [];
+  for (let n=0;n<total;n++){
+    const a = randInt(range.min, range.max); const b = randInt(1,10); const t = randInt(1,3);
+    if (t===1) out.push({ q:`${a} × ${b}`, a:a*b });
+    else if (t===2) out.push({ q:`${b} × ${a}`, a:b*a });
+    else out.push({ q:`${a*b} ÷ ${a}`, a:b });
+  }
+  return shuffle(out).slice(0,total);
+}
+/* Bronze: missing-number + direct forms */
+function buildBronzeQuestions(total){
+  const out = [];
+  const half = Math.max(1, Math.floor(total/2));
+  for (let i=0;i<half;i++){
+    const A=randInt(2,12), B=randInt(1,10), C=A*B; const t=(i%4)+1;
+    if (t===1) out.push({ q:`___ × ${A} = ${C}`, a:B });
+    else if (t===2) out.push({ q:`${A} × ___ = ${C}`, a:B });
+    else if (t===3) out.push({ q:`___ ÷ ${A} = ${B}`, a:C });
+    else out.push({ q:`${C} ÷ ___ = ${B}`, a:A });
+  }
+  for (let i=half;i<total;i++){
+    const A=randInt(2,12), B=randInt(1,10), C=A*B; const t=randInt(1,6);
+    if (t===1) out.push({ q:`___ × ${A} = ${C}`, a:B });
+    else if (t===2) out.push({ q:`${A} × ___ = ${C}`, a:B });
+    else if (t===3) out.push({ q:`___ ÷ ${A} = ${B}`, a:C });
+    else if (t===4) out.push({ q:`${C} ÷ ___ = ${B}`, a:A });
+    else if (t===5) out.push({ q:`${A} × ${B}`, a:C });
+    else out.push({ q:`${B} × ${A}`, a:C });
+  }
+  return shuffle(out).slice(0,total);
+}
+/* Silver: expanded ×10 with exps [0,1] */
+function buildSilverQuestions(total){
+  const out = [];
+  const exps = [0,1];
+  for (let i=0;i<total;i++){
+    const A=randInt(2,12), B=randInt(1,10);
+    const e1=exps[randInt(0,exps.length-1)], e2=exps[randInt(0,exps.length-1)];
+    const bigA=A*(10**e1), bigB=B*(10**e2), prod=bigA*bigB; const t=randInt(1,3);
+    if (t===1)      out.push({ q:`${bigA} × ${bigB}`, a:prod });
+    else if (t===2) out.push({ q:`${bigB} × ${bigA}`, a:prod });
+    else            out.push({ q:`${prod} ÷ ${bigA}`, a:bigB });
+  }
+  return shuffle(out).slice(0,total);
+}
+/* Gold: like Silver but missing-number forms mixed in (exps [0,1]) */
+function buildGoldQuestions(total){
+  const out = [];
+  const exps = [0,1];
+  const half = Math.max(1, Math.floor(total/2));
+  for (let i=0;i<half;i++){
+    const A=randInt(2,12), B=randInt(1,10);
+    const e1=exps[randInt(0,exps.length-1)], e2=exps[randInt(0,exps.length-1)];
+    const bigA=A*(10**e1), bigB=B*(10**e2), prod=bigA*bigB; const t=(i%4)+1;
+    if (t===1)      out.push({ q:`___ × ${bigA} = ${prod}`, a:bigB });
+    else if (t===2) out.push({ q:`${bigA} × ___ = ${prod}`, a:bigB });
+    else if (t===3) out.push({ q:`___ ÷ ${bigA} = ${bigB}`, a:prod });
+    else            out.push({ q:`${prod} ÷ ___ = ${bigB}`, a:bigA });
+  }
+  for (let i=half;i<total;i++){
+    const A=randInt(2,12), B=randInt(1,10);
+    const e1=exps[randInt(0,exps.length-1)], e2=exps[randInt(0,exps.length-1)];
+    const bigA=A*(10**e1), bigB=B*(10**e2), prod=bigA*bigB; const t=randInt(1,6);
+    if (t===1)      out.push({ q:`___ × ${bigA} = ${prod}`, a:bigB });
+    else if (t===2) out.push({ q:`${bigA} × ___ = ${prod}`, a:bigB });
+    else if (t===3) out.push({ q:`___ ÷ ${bigA} = ${bigB}`, a:prod });
+    else if (t===4) out.push({ q:`${prod} ÷ ___ = ${bigB}`, a:bigA });
+    else if (t===5) out.push({ q:`${bigA} × ${bigB}`, a:prod });
+    else            out.push({ q:`${bigB} × ${bigA}`, a:prod });
+  }
+  return shuffle(out).slice(0,total);
+}
+/* Platinum: like Silver but exps [0,1,2] */
+function buildPlatinumQuestions(total){
+  const out = [];
+  const exps = [0,1,2];
+  for (let i=0;i<total;i++){
+    const A=randInt(2,12), B=randInt(1,10);
+    const e1=exps[randInt(0,exps.length-1)], e2=exps[randInt(0,exps.length-1)];
+    const bigA=A*(10**e1), bigB=B*(10**e2), prod=bigA*bigB; const t=randInt(1,3);
+    if (t===1)      out.push({ q:`${bigA} × ${bigB}`, a:prod });
+    else if (t===2) out.push({ q:`${bigB} × ${bigA}`, a:prod });
+    else            out.push({ q:`${prod} ÷ ${bigA}`, a:bigB });
+  }
+  return shuffle(out).slice(0,total);
+}
+/* Obsidian: like Gold with exps [0,1,2] */
+function buildObsidianQuestions(total){
+  const out = [];
+  const exps = [0,1,2];
+  const half = Math.max(1, Math.floor(total/2));
+  for (let i=0;i<half;i++){
+    const A=randInt(2,12), B=randInt(1,10);
+    const e1=exps[randInt(0,exps.length-1)], e2=exps[randInt(0,exps.length-1)];
+    const bigA=A*(10**e1), bigB=B*(10**e2), prod=bigA*bigB; const t=(i%4)+1;
+    if (t===1)      out.push({ q:`___ × ${bigA} = ${prod}`, a:bigB });
+    else if (t===2) out.push({ q:`${bigA} × ___ = ${prod}`, a:bigB });
+    else if (t===3) out.push({ q:`___ ÷ ${bigA} = ${bigB}`, a:prod });
+    else            out.push({ q:`${prod} ÷ ___ = ${bigB}`, a:bigA });
+  }
+  for (let i=half;i<total;i++){
+    const A=randInt(2,12), B=randInt(1,10);
+    const e1=exps[randInt(0,exps.length-1)], e2=exps[randInt(0,exps.length-1)];
+    const bigA=A*(10**e1), bigB=B*(10**e2), prod=bigA*bigB; const t=randInt(1,6);
+    if (t===1)      out.push({ q:`___ × ${bigA} = ${prod}`, a:bigB });
+    else if (t===2) out.push({ q:`${bigA} × ___ = ${prod}`, a:bigB });
+    else if (t===3) out.push({ q:`___ ÷ ${bigA} = ${bigB}`, a:prod });
+    else if (t===4) out.push({ q:`${prod} ÷ ___ = ${bigB}`, a:bigA });
+    else if (t===5) out.push({ q:`${bigA} × ${bigB}`, a:prod });
+    else            out.push({ q:`${bigB} × ${bigA}`, a:prod });
+  }
+  return shuffle(out).slice(0,total);
+}
+
+/* ====== Helpers to keep UI stable & single-line ====== */
+// Fixed-height band so the answer box stays in a fixed vertical spot
+function setQuestionFixedBand(qEl){
+  const band = (window.innerWidth <= 834) ? 100 : 140; // iPad/phone vs desktop
+  qEl.style.height = band + "px";
+  qEl.style.lineHeight = band + "px"; // vertically center the single line
+}
+// Auto-fit font size so a single line never wraps
+function fitSingleLine(qEl, startPx, minPx){
+  const step = 4;
+  let size = startPx;
+  qEl.style.fontSize = size + "px";
+  qEl.style.whiteSpace = "nowrap";
+  qEl.style.overflow = "hidden";      // avoid layout jump
+  qEl.style.textOverflow = "clip";    // show full as we shrink
+  // measure and shrink if needed
+  const maxTries = 20;
+  let tries = 0;
+  while (qEl.scrollWidth > qEl.clientWidth && size > minPx && tries++ < maxTries){
+    size -= step;
+    qEl.style.fontSize = size + "px";
+  }
+}
+
+/* ====== Quiz flow ====== */
+function preflightAndStart(questions, opts){
+  if (!Array.isArray(questions) || questions.length === 0) {
+    console.error('[preflight] No questions', questions);
+    setScreen('ninja-screen');
+    return;
+  }
+
+  try {
+    const nameInput = $("home-username");
+    const nm = nameInput ? (nameInput.value||"").trim() : "";
+    if (nm) localStorage.setItem(NAME_KEY, nm);
+  } catch {}
+
+  ended = false;
+  currentIndex = 0;
+  allQuestions = questions.slice();
+  userAnswers = new Array(allQuestions.length).fill("");
+
+  setScreen("quiz-screen");
+
+  // Title: Dr B TTN — {modeLabel}
+  const title = $("quiz-title");
+  if (title) {
+    const label = (modeLabel && modeLabel.trim()) ? ` — ${modeLabel.trim()}` : "";
+    title.textContent = `Dr B TTN${label}`;
+  }
+
+  const qEl = $("question"); if (qEl){ qEl.style.display=""; qEl.textContent=""; }
+  const aEl = $("answer");   if (aEl){
+    aEl.style.display="";
+    aEl.value="";
+    suppressOSK(aEl, IS_TOUCH);
+    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
+  }
+  const s   = $("score");    if (s){ s.innerHTML=""; }
+
+  createKeypad();
+  showQuestion();
+  startTimer(quizSeconds);
+}
+function getMaxLenForCurrentQuestion(){
+  try {
+    const q = allQuestions[currentIndex];
+    const target = (q && typeof q.a !== "undefined") ? String(q.a) : "999999";
+    return clamp(target.length, 1, 10);
+  } catch { return 10; }
+}
+function syncAnswerMaxLen(){
+  const a = $("answer"); if(!a) return;
+  const cap = getMaxLenForCurrentQuestion();
+  try{ a.setAttribute("maxlength", String(cap)); }catch{}
+  if (a.value.length > cap) a.value = a.value.slice(0, cap);
+}
+function showQuestion(){
+  if (ended) return;
+  const qObj = allQuestions[currentIndex];
+  const qEl = document.getElementById("question");
+  const aEl = document.getElementById("answer");
+
+  if (!qObj || typeof qObj.q !== "string") {
+    console.error("[showQuestion] bad question", currentIndex, qObj);
+    endQuiz();
+    return;
+  }
+
+  // Ensure band exists & is sized
+  // Ensure rigid band exists & is sized BEFORE we set text
+  ensureQuestionBand();
+  layoutQuestionBand();
+
+  // Put text, then shrink-to-fit on a single line
+  // Put text, then lock margins/metrics, then fit-to-line
+  qEl.textContent = qObj.q;
+
+  // (extra safety) ensure no margin/line-height creep every time:
+  qEl.style.margin = "0";
+  qEl.style.lineHeight = "1";
+
+  const isLongBelt = /Silver|Gold|Platinum|Obsidian/.test(modeLabel);
+  const startPx = isLongBelt ? 78 : 110;
+  const minPx   = isTabletLike() ? 44 : 56;
+  fitSingleLine(qEl, startPx, minPx);
+
+  if (aEl) {
+    aEl.value = "";
+    try{ aEl.focus(); aEl.setSelectionRange(aEl.value.length, aEl.value.length); }catch{}
+    attachKeyboard(aEl);
+  }
+}
+
+
+function quitFromQuiz(){
+  teardownQuiz(); destroyKeypad(); goHome();
+}
+window.quitFromQuiz = quitFromQuiz;
+
+/* ====== Timer ====== */
+function startTimer(seconds){
+  clearInterval(timerInterval);
+  timerDeadline = Date.now() + seconds*1000;
+  timerInterval = setInterval(()=>{
+    const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now())/1000));
+    const t = $("timer"); if (t) t.textContent = String(remaining);
+    if (remaining <= 0){ clearInterval(timerInterval); endQuiz(); }
+  }, 250);
+}
+function teardownQuiz(){
+  clearInterval(timerInterval); timerInterval=null; ended=true; submitLockedUntil=0;
+  if (desktopKeyHandler){ document.removeEventListener("keydown", desktopKeyHandler); desktopKeyHandler=null; }
+  suppressOSK($("answer"), false);
+}
+
+/* ====== Keypad + keyboard ====== */
+function createKeypad(){
+  const host = $("answer-pad"); if(!host) return;
+  host.innerHTML = `
+    <div class="pad">
+      <button class="pad-btn" data-k="7">7</button>
+      <button class="pad-btn" data-k="8">8</button>
+      <button class="pad-btn" data-k="9">9</button>
+      <button class="pad-btn pad-clear" data-k="clear">Clear</button>
+
+      <button class="pad-btn" data-k="4">4</button>
+      <button class="pad-btn" data-k="5">5</button>
+      <button class="pad-btn" data-k="6">6</button>
+      <button class="pad-btn pad-enter" data-k="enter">Enter</button>
+
+      <button class="pad-btn" data-k="1">1</button>
+      <button class="pad-btn" data-k="2">2</button>
+      <button class="pad-btn" data-k="3">3</button>
+
+      <button class="pad-btn key-0" data-k="0">0</button>
+      <button class="pad-btn pad-back" data-k="back">⌫</button>
+    </div>`;
+  host.style.display="block"; host.style.pointerEvents="auto";
+  host.querySelectorAll(".pad-btn").forEach(btn=>{
+    btn.addEventListener("pointerdown",(e)=>{ e.preventDefault(); handleKey(btn.getAttribute("data-k")); },{passive:false});
+  });
+}
+function destroyKeypad(){
+  const host=$("answer-pad"); if(!host) return; host.innerHTML=""; host.style.display=""; host.style.pointerEvents="";
+}
+function handleKey(val){
+  const a=$("answer"); if(!a || ended) return;
+  if (val==="clear"){ a.value=""; a.dispatchEvent(new Event("input",{bubbles:true})); return; }
+  if (val==="back") { a.value = a.value.slice(0,-1); a.dispatchEvent(new Event("input",{bubbles:true})); return; }
+  if (val==="enter"){ safeSubmit(); return; }
+  if (/^\d$/.test(val)){
+    if (a.value.length < 10){ a.value += val; a.dispatchEvent(new Event("input",{bubbles:true})); }
+    try{ a.setSelectionRange(a.value.length,a.value.length); }catch{}
+  }
+}
+function attachKeyboard(a){
+  if (desktopKeyHandler){ document.removeEventListener("keydown", desktopKeyHandler); desktopKeyHandler=null; }
+  desktopKeyHandler = (e)=>{
+    if (IS_TOUCH) return; // on touch, use on-screen keypad only
+    const quiz = $("quiz-container"); if(!quiz || quiz.style.display==="none" || ended) return;
+    if (!a || a.style.display==="none") return;
+    if (/^\d$/.test(e.key)){ e.preventDefault(); if (a.value.length < 10) a.value += e.key; }
+    else if (e.key==="Backspace" || e.key==="Delete"){ e.preventDefault(); a.value = a.value.slice(0,-1); }
+    else if (e.key==="Enter"){ e.preventDefault(); safeSubmit(); }
+  };
+  document.addEventListener("keydown", desktopKeyHandler);
+  if (a) a.addEventListener("input", ()=>{ a.value = a.value.replace(/[^\d]/g,"").slice(0,10); });
+}
+function safeSubmit(){
+  const now = Date.now(); if (now < submitLockedUntil) return; submitLockedUntil = now + 200;
+  const a = $("answer"); if(!a || ended) return;
+  const valStr = a.value.trim(); userAnswers[currentIndex] = (valStr===""?"":Number(valStr));
+  currentIndex++; if (currentIndex >= allQuestions.length){ endQuiz(); return; }
+  showQuestion();
+}
+
+/* ====== End & Answers ====== */
+function endQuiz(){
+  teardownQuiz(); destroyKeypad();
+  const qEl=$("question"); if (qEl) qEl.style.display="none";
+  const aEl=$("answer"); if (aEl) aEl.style.display="none";
+  let correct=0;
+  for (let i=0;i<allQuestions.length;i++){
+    const c=Number(allQuestions[i].a);
+    const u=(userAnswers[i]===""?NaN:Number(userAnswers[i]));
+    if (!Number.isNaN(u) && u===c) correct++;
+  }
+  const s=$("score");
+  if (s) s.innerHTML = `<div class="result-line"><strong>Score =</strong> ${correct} / ${allQuestions.length}</div><button class="big-button" onclick="showAnswers()">Show answers</button>`;
+}
+function showAnswers(){
+  const s = $("score"); if(!s) return;
+
+  // EXACTLY 5 columns; items single-line and smaller font
+  let html = `<div class="answers-grid" style="
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:8px;
+      align-items:start;
+    ">`;
+
+  for (let i=0;i<allQuestions.length;i++){
+    const q = allQuestions[i] || {};
+    const uRaw = userAnswers[i];
+    const u = (uRaw===undefined || uRaw==="") ? "—" : String(uRaw);
+    const ok = (uRaw === q.a);
+    const hasBlank = (typeof q.q === "string" && q.q.indexOf("___") !== -1);
+
+    const displayEq = hasBlank ? q.q.replace("___", `<u>${u}</u>`)
+                               : `${q.q} = ${u}`;
+
+    // Force single-line + smaller font inline (so no CSS edit required)
+    const baseStyle = "white-space:nowrap;font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;";
+    const okStyle   = "color:#2e7d32;background:#edf7ed;border-color:#c8e6c9;";
+    const badStyle  = "color:#c62828;background:#fff1f1;border-color:#ffcdd2;";
+
+    html += `<div class="answer-chip ${ok ? "correct" : "wrong"}" style="${baseStyle}${ok ? okStyle : badStyle}">${displayEq}</div>`;
+  }
+
+  html += `</div>`;
+  s.innerHTML = html;
+}
+
+/* ====== Queue (stub for offline) ====== */
+function getQueue(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch{ return []; } }
+function setQueue(arr){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(arr)); }catch{} }
+
+/* ====== Belt start functions (counts per spec) ====== */
+function startWhiteBelt(){   modeLabel="White Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([3,4],50),            {theme:"white"}); }
+function startYellowBelt(){  modeLabel="Yellow Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,6],50),            {theme:"yellow"}); }
+function startOrangeBelt(){  modeLabel="Orange Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([2,3,4,5,6],50),       {theme:"orange"}); }
+function startGreenBelt(){   modeLabel="Green Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([4,8],50),            {theme:"green"}); }
+function startBlueBelt(){    modeLabel="Blue Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,8],50),            {theme:"blue"}); }
+function startPinkBelt(){    modeLabel="Pink Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([7,9],50),            {theme:"pink"}); }
+function startPurpleBelt(){  modeLabel="Purple Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(50,{min:2,max:10}),   {theme:"purple"}); }
+
+function startRedBelt(){     modeLabel="Red Belt";     quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:10}),  {theme:"red"}); }
+function startBlackBelt(){   modeLabel="Black Belt";   quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildFullyMixed(100,{min:2,max:12}),  {theme:"black"}); }
+function startBronzeBelt(){  modeLabel="Bronze Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildBronzeQuestions(100),           {theme:"bronze"}); }
+function startSilverBelt(){  modeLabel="Silver Belt";  quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildSilverQuestions(100),           {theme:"silver"}); }
+function startGoldBelt(){    modeLabel="Gold Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildGoldQuestions(100),             {theme:"gold"}); }
+function startPlatinumBelt(){modeLabel="Platinum Belt";quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildPlatinumQuestions(100),         {theme:"platinum"}); }
+function startObsidianBelt(){modeLabel="Obsidian Belt";quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildObsidianQuestions(100),         {theme:"obsidian"}); }
+
+/* ====== Exports for onclick ====== */
+window.startWhiteBelt=startWhiteBelt; window.startYellowBelt=startYellowBelt;
+window.startOrangeBelt=startOrangeBelt; window.startGreenBelt=startGreenBelt;
+window.startBlueBelt=startBlueBelt; window.startPinkBelt=startPinkBelt;
+window.startPurpleBelt=startPurpleBelt; window.startRedBelt=startRedBelt;
+window.startBlackBelt=startBlackBelt; window.startBronzeBelt=startBronzeBelt;
+window.startSilverBelt=startSilverBelt; window.startGoldBelt=startGoldBelt;
+window.startPlatinumBelt=startPlatinumBelt; window.startObsidianBelt=startObsidianBelt;
