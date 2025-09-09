@@ -1,94 +1,45 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Times Table Trainer</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#1e3a8a" />
-  <link rel="icon" href="./favicon.ico" />
-  <link rel="stylesheet" href="./styles.css?v=frontpage-GH27" />
   <title>Times Tables Trainer</title>
   <link rel="stylesheet" href="./styles.css?v=frontpage-GH35" />
 </head>
 <body>
-  <noscript>
-    <div style="padding:12px; background:#fee2e2; color:#7f1d1d; text-align:center; font-size:18px;">
-      This app needs JavaScript to run. Please enable JavaScript and reload.
-    </div>
-  </noscript>
-
-  <!-- ===== HOME / FRONT PAGE ===== -->
-  <main id="home-screen" class="center" role="main">
-    <h1 class="title">Times Table Trainer</h1>
 
   <!-- HOME -->
   <section id="home-screen" class="center" style="display:block;">
     <h1 class="title">Times Tables Trainer</h1>
     <div id="welcome-user"></div>
     <div class="name-row">
-      <label for="home-username" class="visually-hidden">Your name</label>
-      <input
-        type="text"
-        id="home-username"
-        placeholder="Enter your name"
-        class="big-input"
-        autocomplete="name"
-        aria-label="Enter your name"
-      />
       <label class="visually-hidden" for="home-username">Your name</label>
       <input id="home-username" class="big-input" placeholder="Type your name…" autocomplete="off" />
     </div>
-
-    <div class="choice-buttons stack-mobile" role="group" aria-label="Main choices">
-      <button type="button" class="big-button primary" onclick="goMini()" aria-label="Mini Tests single tables">
-        Mini Tests (Single Tables)
-      </button>
-      <button type="button" class="big-button secondary" onclick="goNinja()" aria-label="Ninja Belt mixed tables">
-        Ninja Belt (Mixed Tables)
-      </button>
     <div class="choice-buttons">
       <button class="choice" onclick="goMini()">Mini Tests</button>
       <button class="choice" onclick="goNinja()">Ninja Belt</button>
     </div>
-  </main>
   </section>
 
-  <!-- ===== MINI TESTS SETUP ===== -->
-  <section id="mini-screen" class="center" style="display:none;" aria-labelledby="mini-title">
-    <h2 class="subtitle" id="hello-user"></h2>
-    <h2 class="subtitle" id="mini-title" style="font-size:32px; margin-top:10px;">Choose your times table</h2>
-    <div id="table-choices" class="choice-buttons" role="group" aria-label="Times table choices"></div>
   <!-- MINI -->
   <section id="mini-screen" class="center" style="display:none;">
     <h2 class="subtitle">Dr B TTN — Mini Tests</h2>
     <div class="info-text">Choose a single times table and hit Start (always 50 questions).</div>
     <div id="table-choices" class="choice-buttons"></div>
     <div class="choice-buttons">
-      <button id="start-btn" onclick="startQuiz()" class="big-button primary">Start Quiz (50 Q / 5 min)</button>
       <button class="big-button primary" onclick="startQuiz()">Start Mini Test</button>
       <button class="big-button" onclick="goHome()">Back</button>
     </div>
-  
-      <button class="belt gold" onclick="startGoldBelt()">Gold Belt</button>
-      <button class="belt platinum" onclick="startPlatinumBelt()">Platinum Belt</button>
-      <button class="belt obsidian" onclick="startObsidianBelt()">Obsidian Belt</button>
   </section>
 
-</section>
   <!-- NINJA -->
   <section id="ninja-screen" style="display:none;">
     <h2 class="subtitle center">Ninja Belts</h2>
 
-  <!-- ===== NINJA BELTS ===== -->
-  <section id="ninja-screen" class="center" style="display:none;" aria-labelledby="ninja-title">
-    <h2 class="subtitle" id="ninja-title">Ninja Belt</h2>
     <div class="belt-grid">
       <!-- 50Q belts -->
       <div class="belt-card white">
-        <div class="belt-name">White Ninja Belt</div>
-        <div class="belt-desc">Mixed: 3× &amp; 4×</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">White Belt</div>
         <div class="belt-desc">3× & 4×</div>
         <div class="belt-meta">50 Questions</div>
@@ -96,9 +47,6 @@
       </div>
 
       <div class="belt-card yellow">
-        <div class="belt-name">Yellow Ninja Belt</div>
-        <div class="belt-desc">Mixed: 4× &amp; 6×</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">Yellow Belt</div>
         <div class="belt-desc">4× & 6×</div>
         <div class="belt-meta">50 Questions</div>
@@ -106,9 +54,6 @@
       </div>
 
       <div class="belt-card orange">
-        <div class="belt-name">Orange Ninja Belt</div>
-        <div class="belt-desc">Mixed: 2x – 6x</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">Orange Belt</div>
         <div class="belt-desc">2×–6×</div>
         <div class="belt-meta">50 Questions</div>
@@ -116,9 +61,6 @@
       </div>
 
       <div class="belt-card green">
-        <div class="belt-name">Green Ninja Belt</div>
-        <div class="belt-desc">Mixed: 4× &amp; 8×</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">Green Belt</div>
         <div class="belt-desc">4× & 8×</div>
         <div class="belt-meta">50 Questions</div>
@@ -126,9 +68,6 @@
       </div>
 
       <div class="belt-card blue">
-        <div class="belt-name">Blue Ninja Belt</div>
-        <div class="belt-desc">Mixed: 7× &amp; 8×</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">Blue Belt</div>
         <div class="belt-desc">7× & 8×</div>
         <div class="belt-meta">50 Questions</div>
@@ -136,9 +75,6 @@
       </div>
 
       <div class="belt-card pink">
-        <div class="belt-name">Pink Ninja Belt</div>
-        <div class="belt-desc">Mixed: 7× &amp; 9×</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">Pink Belt</div>
         <div class="belt-desc">7× & 9×</div>
         <div class="belt-meta">50 Questions</div>
@@ -146,9 +82,6 @@
       </div>
 
       <div class="belt-card purple">
-        <div class="belt-name">Purple Ninja Belt</div>
-        <div class="belt-desc">Mixed: 2x – 10x</div>
-        <div class="belt-meta">50 Q • 5 min</div>
         <div class="belt-name">Purple Belt</div>
         <div class="belt-desc">2×–10× (mixed)</div>
         <div class="belt-meta">50 Questions</div>
@@ -157,9 +90,6 @@
 
       <!-- 100Q belts -->
       <div class="belt-card red">
-        <div class="belt-name">Red Ninja Belt</div>
-        <div class="belt-desc">Mixed: 2x – 10x</div>
-        <div class="belt-meta">100 Q • 5 min</div>
         <div class="belt-name">Red Belt</div>
         <div class="belt-desc">2×–10× (mixed)</div>
         <div class="belt-meta">100 Questions</div>
@@ -167,9 +97,6 @@
       </div>
 
       <div class="belt-card black">
-        <div class="belt-name">Black Ninja Belt</div>
-        <div class="belt-desc">Mixed: 2x – 12x</div>
-        <div class="belt-meta">100 Q • 5 min</div>
         <div class="belt-name">Black Belt</div>
         <div class="belt-desc">2×–12× (mixed)</div>
         <div class="belt-meta">100 Questions</div>
@@ -177,9 +104,6 @@
       </div>
 
       <div class="belt-card bronze">
-        <div class="belt-name">Bronze Ninja Belt</div>
-        <div class="belt-desc">Mixed: 2x – 12x + Missing Numbers</div>
-        <div class="belt-meta">100 Q • 5 min</div>
         <div class="belt-name">Bronze Belt</div>
         <div class="belt-desc">Missing-number mix</div>
         <div class="belt-meta">100 Questions</div>
@@ -187,44 +111,12 @@
       </div>
 
       <div class="belt-card silver">
-        <div class="belt-name">Silver Ninja Belt</div>
-        <div class="belt-desc">Expanded factors (×10)</div>
-        <div class="belt-meta">100 Q • 5 min</div>
         <div class="belt-name">Silver Belt</div>
         <div class="belt-desc">×10 numbers (exps 0–1)</div>
         <div class="belt-meta">100 Questions</div>
         <button class="big-button primary" onclick="startSilverBelt()">Start Silver Belt</button>
       </div>
-      <!-- Gold Belt -->
-<div class="belt-card gold">
-  <div class="belt-name">Gold Belt</div>
-  <div class="belt-desc">Blanks + ×10 (1, 10)</div>
-  <div class="belt-meta">100 Q • 5 min</div>
-  <button class="big-button primary" onclick="startGoldBelt()">Start</button>
-</div>
 
-<!-- Platinum Belt -->
-<div class="belt-card platinum">
-  <div class="belt-name">Platinum Belt</div>
-  <div class="belt-desc">Expanded ×10 (1, 10, 100)</div>
-  <div class="belt-meta">100 Q • 5 min</div>
-  <button class="big-button primary" onclick="startPlatinumBelt()">Start</button>
-</div>
-
-<!-- Obsidian Belt -->
-<div class="belt-card obsidian">
-  <div class="belt-name">Obsidian Belt</div>
-  <div class="belt-desc">Blanks + ×10 (1, 10, 100)</div>
-  <div class="belt-meta">100 Q • 5 min</div>
-  <button class="big-button primary" onclick="startObsidianBelt()">Start</button>
-</div>
-    </div>
-    <div class="choice-buttons"><button class="big-button" onclick="goHome()">Back</button></div>
-  </section>
-
-  <!-- ===== QUIZ UI ===== -->
-  <section id="quiz-container" class="center" style="display:none;" aria-labelledby="quiz-title">
-    <h2 id="quiz-title" class="subtitle">Quiz</h2>
       <div class="belt-card gold">
         <div class="belt-name">Gold Belt</div>
         <div class="belt-desc">Missing-number ×10 (exps 0–1)</div>
@@ -239,11 +131,6 @@
         <button class="big-button primary" onclick="startPlatinumBelt()">Start Platinum Belt</button>
       </div>
 
-    <div class="quiz-row">
-      <div class="question-col">
-        <div id="question" class="question" role="status" aria-live="polite"></div>
-        <label for="answer" class="visually-hidden">Your answer</label>
-        <input type="text" id="answer" class="answer-input" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
       <div class="belt-card obsidian">
         <div class="belt-name">Obsidian Belt</div>
         <div class="belt-desc">Missing-number ×10 (exps 0–2)</div>
@@ -252,14 +139,11 @@
       </div>
     </div>
 
-      <div id="answer-pad" class="answer-pad" aria-label="On-screen number pad" role="group"></div>
     <div class="center" style="margin:20px 0 40px;">
       <button class="big-button" onclick="goHome()">Back</button>
     </div>
   </section>
 
-    <div id="timer" class="timer" aria-hidden="true">Time left</div>
-    <div id="score" class="score" role="region" aria-label="Score and answers"></div>
   <!-- QUIZ -->
   <section id="quiz-screen" style="display:none;">
     <div id="quiz-container">
@@ -270,8 +154,6 @@
           <input id="answer" class="answer-input" inputmode="numeric" autocomplete="off" />
           <div id="timer" class="timer" aria-hidden="true"></div>
 
-    <div class="choice-buttons">
-      <button class="big-button" onclick="quitFromQuiz()">Quit to Home</button>
           <div class="choice-buttons" style="margin-top:18px;">
             <button class="big-button" onclick="quitFromQuiz()">Quit</button>
           </div>
@@ -283,7 +165,6 @@
     </div>
   </section>
 
-  <script src="./script.js?v=frontpage-GH27" defer></script>
   <script src="./script.js?v=frontpage-GH35"></script>
 </body>
 </html>
