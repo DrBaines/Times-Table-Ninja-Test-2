@@ -302,3 +302,34 @@ html, body {
     .question { font-size: 64px !important; }
   }
 }
+/* Highlight the selected table in Mini Tests */
+.table-btn.selected {
+  background: #2e7d32 !important;  /* darker green */
+  border-color: #2e7d32 !important;
+  color: #fff !important;
+}
+
+/* Optional: briefly indicate which home choice was chosen */
+.big-button.primary.active-choice {
+  background: #2e7d32;  /* darker than normal primary */
+  border-color: #2e7d32;
+  color: #fff;
+}
+.big-button.secondary.active-choice {
+  background: #d79400;  /* darker amber */
+  border-color: #d79400;
+  color: #111;
+}
+
+/* Title image under the buttons */
+.home-hero {
+  margin: 20px auto 40px;
+  text-align: center;
+}
+.home-hero img {
+  max-width: min(90vw, 800px);
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+}
