@@ -1,6 +1,6 @@
 /* Times Tables Trainer — script.js (frontpage-GH47)
    - One-size-per-belt font on iPad/touch (no per-question resizing)
-   - Title: "Dr B TTN — {Belt}"
+   - Title: "Dr B's Times Table Ninja — {Belt}"
    - Print/Save button (captures name, score, answers) + date dd/mm/yy
    - Answers: 5 columns; wrong = red; Quit button below answers
    - Keypad + keyboard; hidden timer; offline queue stubs
@@ -427,7 +427,7 @@ function preflightAndStart(questions, opts){
   const title = $("quiz-title");
   if (title) {
     const label = (modeLabel && modeLabel.trim()) ? ` — ${modeLabel.trim()}` : "";
-    title.textContent = `Dr B TTN${label}`;
+    title.textContent = `Dr B's Times Table Ninja${label}`;
   }
 
   const qEl = $("question"); 
@@ -553,9 +553,9 @@ function printResults(){
   win.document.open();
   win.document.write(`
     <html>
-      <head><title>Dr B TTN — ${belt} — ${username}</title>${css}</head>
+      <head><title>Dr B's Times Table Ninja — ${belt} — ${username}</title>${css}</head>
       <body>
-        <h1>Dr B TTN — ${belt}</h1>
+        <h1>Dr B's Times Table Ninja — ${belt}</h1>
         <div class="meta"><strong>${username}</strong> — Score: <strong>${correct} / ${allQuestions.length}</strong> — ${today}</div>
         ${answersHTML}
         <div style="margin-top:16px;">
