@@ -274,3 +274,31 @@ body {
 @media (max-width: 1024px) { :root{ --pad-right: 120px; } #quiz-container{ max-width: 920px; } }
 @media (max-width: 834px)  { :root{ --pad-right: 80px; }  #quiz-container{ max-width: 860px; } }
 @media (min-width: 1440px) { :root{ --pad-right: clamp(240px, 12vw, 360px); } }
+
+/* GH-Fix: normalize belt title sizing */
+.belt-card .belt-name {
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+/* If any heading tags or spans are inside, inherit the size */
+.belt-card .belt-name h1,
+.belt-card .belt-name h2,
+.belt-card .belt-name h3,
+.belt-card .belt-name h4,
+.belt-card .belt-name h5,
+.belt-card .belt-name h6,
+.belt-card .belt-name p,
+.belt-card .belt-name span,
+.belt-card .belt-name strong,
+.belt-card .belt-name em {
+  font-size: inherit !important;
+  line-height: inherit;
+  margin: 0;
+}
+
+/* Force Obsidian to exactly match Platinum */
+.belt-card.obsidian .belt-name {
+  font-size: 24px !important;
+}
