@@ -542,15 +542,22 @@ function buildAnswersHTML(){
 function printResults(){
   // Compute score + name
   let correct = 0;
-  for (let i=0; i<allQuestions.length; i++){
+  for (let i = 0; i < allQuestions.length; i++){
     const c = Number(allQuestions[i].a);
-    const u = (userAnswers[i]==="" ? NaN : Number(userAnswers[i]));
+    const u = (userAnswers[i] === "" ? NaN : Number(userAnswers[i]));
     if (!Number.isNaN(u) && u === c) correct++;
   }
   const username = (localStorage.getItem(NAME_KEY) || "").trim() || "Player";
   const today = formatToday();
   const answersHTML = buildAnswersHTML();
   const belt = modeLabel || "Quiz";
+
+  // Calculate time taken
+  const elapsedMs = Date.now() - quizStartTime;
+  const elapsedSec = Math.round(elapsedMs / 1000);
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  const timeTaken = `${minutes}m ${seconds}s`;
 
   const win = window.open("", "_blank");
   if (!win) { alert("Pop-up blocked. Please allow pop-ups to print."); return; }
@@ -575,7 +582,12 @@ function printResults(){
       <head><title>Dr B's Times Table Ninja — ${belt} — ${username}</title>${css}</head>
       <body>
         <h1>Dr B's Times Table Ninja — ${belt}</h1>
-        <div class="meta"><strong>${username}</strong> — Score: <strong>${correct} / ${allQuestions.length}</strong> — ${today}</div>
+        <div class="meta">
+          <strong>${username}</strong> — 
+          Score: <strong>${correct} / ${allQuestions.length}</strong> — 
+          Time taken: <strong>${timeTaken}</strong> — 
+          ${today}
+        </div>
         ${answersHTML}
         <div style="margin-top:16px;">
           <button onclick="window.print()">Print / Save as PDF</button>
@@ -588,13 +600,17 @@ function printResults(){
 }
 window.printResults = printResults;
 
+
 function endQuiz(){
   teardownQuiz();
-   const elapsedMs = Date.now() - quizStartTime;
-const elapsedSec = Math.round(elapsedMs / 1000);
-const minutes = Math.floor(elapsedSec / 60);
-const seconds = elapsedSec % 60;
-const timeTaken = `${minutes}m ${seconds}s`;
+
+  // Time taken
+  const elapsedMs = Date.now() - quizStartTime;
+  const elapsedSec = Math.round(elapsedMs / 1000);
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  const timeTaken = `${minutes}m ${seconds}s`;
+
   destroyKeypad();
 
   const qEl = $("question"); if (qEl) qEl.style.display = "none";
@@ -602,39 +618,68 @@ const timeTaken = `${minutes}m ${seconds}s`;
 
   // Tally score
   let correct = 0;
-  for (let i=0; i<allQuestions.length; i++){
+  for (let i = 0; i < allQuestions.length; i++){
     const c = Number(allQuestions[i].a);
-    const u = (userAnswers[i]==="" ? NaN : Number(userAnswers[i]));
+    const u = (userAnswers[i] === "" ? NaN : Number(userAnswers[i]));
     if (!Number.isNaN(u) && u === c) correct++;
   }
-  const username = (localStorage.getItem(NAME_KEY) || "").trim() || "Player";
-  const today = formatToday();
 
   const s = $("score");
   if (s){
     s.innerHTML = `
-  <div class="result-line">
-    <strong>Score =</strong> ${correct} / ${allQuestions.length}
-  </div>
-  <div class="result-line">
-    <strong>Time taken:</strong> ${timeTaken}
-  </div>
-  <button class="big-button" onclick="showAnswers()">Show answers</button>
-  <button class="big-button" onclick="quitFromQuiz()">Quit to Home</button>
-`;
+      <div class="result-line">
+        <strong>Score =</strong> ${correct} / ${allQuestions.length}
+      </div>
+      <div class="result-line">
+        <strong>Time taken:</strong> ${timeTaken}
+      </div>
+
+      <div class="choice-buttons">
+        <button class="big-button" onclick="showAnswers()">Show answers</button>
+        <button class="big-button" onclick="printResults()">Print answers</button>
+        <button class="big-button" onclick="quitFromQuiz()">Quit to Home</button>
+      </div>
+    `;
   }
 }
+
 function showAnswers(){
-  const s = $("score"); 
+  const s = $("score");
   if (!s) return;
 
-  const html = buildAnswersHTML();
+  // 1) Remove only the "Show answers" button
+  s.innerHTML = s.innerHTML.replace(/<button[^>]*showAnswers[^>]*>.*?<\/button>/i, "");
 
-  // Remove the "Show answers" button and append the grid + Quit
-  s.innerHTML = s.innerHTML.replace(/<button[^>]*showAnswers\([^)]*\)[^>]*>.*?<\/button>/i, "");
-  s.innerHTML += html;
+  // 2) Recompute score + time (shown again above the grid)
+  let correct = 0;
+  for (let i = 0; i < allQuestions.length; i++){
+    const c = Number(allQuestions[i].a);
+    const u = (userAnswers[i] === "" ? NaN : Number(userAnswers[i]));
+    if (!Number.isNaN(u) && u === c) correct++;
+  }
+  const elapsedMs = Date.now() - quizStartTime;
+  const elapsedSec = Math.round(elapsedMs / 1000);
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  const timeTaken = `${minutes}m ${seconds}s`;
+
+  // 3) Add a compact summary just above the answers grid
+  const summaryHTML = `
+    <div id="answers-summary" style="margin-top:10px; margin-bottom:6px; font-size:18px;">
+      <strong>Score =</strong> ${correct} / ${allQuestions.length}
+      &nbsp;•&nbsp;
+      <strong>Time taken:</strong> ${timeTaken}
+    </div>
+  `;
+
+  // 4) Append the grid
+  const gridHTML = buildAnswersHTML();
+  s.innerHTML += summaryHTML + gridHTML;
 }
 window.showAnswers = showAnswers;
+
+window.showAnswers = showAnswers;
+
 
 /* ====== Queue (stubs) ====== */
 function getQueue(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch{ return []; } }
