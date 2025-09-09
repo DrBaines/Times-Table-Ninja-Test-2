@@ -274,3 +274,31 @@ body {
 @media (max-width: 1024px) { :root{ --pad-right: 120px; } #quiz-container{ max-width: 920px; } }
 @media (max-width: 834px)  { :root{ --pad-right: 80px; }  #quiz-container{ max-width: 860px; } }
 @media (min-width: 1440px) { :root{ --pad-right: clamp(240px, 12vw, 360px); } }
+
+/* --- iOS/iPad font inflation fixes --- */
+
+/* 1) Globally disable text inflation on iOS */
+html, body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 2) Extra guard: force consistent sizes on iOS only */
+@supports (-webkit-touch-callout: none) {
+  /* Belt names: keep consistent across all belts (Platinum, Obsidian, etc.) */
+  .belt-card .belt-name {
+    font-size: 24px !important;
+    line-height: 1.15;
+  }
+
+  /* Questions: match your preferred “Silver” size on iPad */
+  .question {
+    font-size: 80px !important;  /* change if your Silver uses a different size */
+    line-height: 1;
+  }
+
+  /* Smaller iPad widths */
+  @media (max-width: 700px) {
+    .question { font-size: 64px !important; }
+  }
+}
