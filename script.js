@@ -44,7 +44,14 @@ const $ = (id)=>document.getElementById(id);
 const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 const randInt=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
-
+function getTimeTakenStr() {
+  let ms = Date.now() - quizStartTime;
+  if (!(ms > 0)) ms = 0;
+  const secs = Math.round(ms / 1000);
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}m ${s}s`;
+}
 /* Date helper for header */
 function formatToday(){
   const d = new Date();
@@ -166,6 +173,7 @@ function buildMiniQuestions(base, total){
 function startQuiz(){
   modeLabel = `Mini ${selectedBase}×`;
   quizSeconds = QUIZ_SECONDS_DEFAULT;
+  quizStartTime = Date.now();                 // ← extra safeguard for Mini
   preflightAndStart(buildMiniQuestions(selectedBase, 50));
 }
 window.startQuiz = startQuiz;
@@ -557,7 +565,7 @@ function printResults(){
   const elapsedSec = Math.round(elapsedMs / 1000);
   const minutes = Math.floor(elapsedSec / 60);
   const seconds = elapsedSec % 60;
-  const timeTaken = `${minutes}m ${seconds}s`;
+  const timeTaken = getTimeTakenStr();
 
   const win = window.open("", "_blank");
   if (!win) { alert("Pop-up blocked. Please allow pop-ups to print."); return; }
@@ -609,7 +617,7 @@ function endQuiz(){
   const elapsedSec = Math.round(elapsedMs / 1000);
   const minutes = Math.floor(elapsedSec / 60);
   const seconds = elapsedSec % 60;
-  const timeTaken = `${minutes}m ${seconds}s`;
+  const timeTaken = getTimeTakenStr();
 
   destroyKeypad();
 
