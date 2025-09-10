@@ -3,7 +3,7 @@
    - Title: "Dr B's Times Table Ninja — {Belt}"
    - Print/Save button (captures name, score, answers) + date dd/mm/yy
    - Answers: 5 columns; wrong = red; Quit button below answers
-   - Keypad + keyboard; hidden timer;
+   - Keypad + keyboard; hidden timer; 
 */
 
 /* ====== Config ====== */
@@ -705,3 +705,5 @@ window.startPurpleBelt=startPurpleBelt; window.startRedBelt=startRedBelt;
 window.startBlackBelt=startBlackBelt; window.startBronzeBelt=startBronzeBelt;
 window.startSilverBelt=startSilverBelt; window.startGoldBelt=startGoldBelt;
 window.startPlatinumBelt=startPlatinumBelt; window.startObsidianBelt=startObsidianBelt;
+
+Add CSP Report-Only and secure cookie settings
