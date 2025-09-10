@@ -3,7 +3,7 @@
    - Title: "Dr B's Times Table Ninja — {Belt}"
    - Print/Save button (captures name, score, answers) + date dd/mm/yy
    - Answers: 5 columns; wrong = red; Quit button below answers
-   - Keypad + keyboard; hidden timer;  
+   - Keypad + keyboard; hidden timer;
 */
 
 /* ====== Config ====== */
