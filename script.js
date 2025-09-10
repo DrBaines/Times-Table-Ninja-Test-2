@@ -12,7 +12,6 @@ const SHEET_SECRET   = "";   // secret if your endpoint requires it
 
 const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes (hidden timer) 
 const QUEUE_KEY = "tttQueueV1";
-const NAME_KEY  = "tttName";
 
 /* ====== State ====== */
 let modeLabel = "";
@@ -110,21 +109,11 @@ function goHome(){
   setScreen("home-screen");
 }
 function goMini(){
-  const nameInput = $("home-username");
-  if (nameInput){
-    const val = (nameInput.value || "").trim();
-    if (val){ localStorage.setItem(NAME_KEY, val); }
-  }
-  buildTableButtons();
+   buildTableButtons();
   setScreen("mini-screen");
 }
 function goNinja(){
-  const nameInput = $("home-username");
-  if (nameInput){
-    const val = (nameInput.value || "").trim();
-    if (val){ localStorage.setItem(NAME_KEY, val); }
-  }
-  setScreen("ninja-screen");
+    setScreen("ninja-screen");
 }
 window.setScreen = setScreen;
 window.goHome = goHome;
@@ -555,7 +544,8 @@ function printResults(){
     const u = (userAnswers[i] === "" ? NaN : Number(userAnswers[i]));
     if (!Number.isNaN(u) && u === c) correct++;
   }
-  const username = (localStorage.getItem(NAME_KEY) || "").trim() || "Player";
+  const nameInput = $("home-username");
+const username = nameInput ? (nameInput.value || "Player").trim() : "Player";
   const today = formatToday();
   const answersHTML = buildAnswersHTML();
   const belt = modeLabel || "Quiz";
