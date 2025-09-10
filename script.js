@@ -3,15 +3,14 @@
    - Title: "Dr B's Times Table Ninja — {Belt}"
    - Print/Save button (captures name, score, answers) + date dd/mm/yy
    - Answers: 5 columns; wrong = red; Quit button below answers
-   - Keypad + keyboard; hidden timer; offline queue stubs
+   - Keypad + keyboard; hidden timer;
 */
 
 /* ====== Config ====== */
-const SHEET_ENDPOINT = "";   // set your Apps Script web app URL if needed
-const SHEET_SECRET   = "";   // secret if your endpoint requires it
+
 
 const QUIZ_SECONDS_DEFAULT = 300; // 5 minutes (hidden timer) 
-const QUEUE_KEY = "tttQueueV1";
+
 
 /* ====== State ====== */
 let modeLabel = "";
@@ -679,9 +678,7 @@ window.showAnswers = showAnswers;
 window.showAnswers = showAnswers;
 
 
-/* ====== Queue (stubs) ====== */
-function getQueue(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch{ return []; } }
-function setQueue(arr){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(arr)); }catch{} }
+
 
 /* ====== Belt start functions (counts per spec) ====== */
 function startWhiteBelt(){    modeLabel="White Belt";    quizSeconds=QUIZ_SECONDS_DEFAULT; preflightAndStart(buildMixedBases([3,4],50),            {theme:"white"}); }
